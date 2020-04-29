@@ -61,7 +61,7 @@ String StringSerializer::encode(float v)
 
 String StringSerializer::encode(bool v)
 {
-	return toString(v);
+	return v ? "true" : "false";
 }
 
 Halley::String Halley::StringSerializer::encode(Colour c)

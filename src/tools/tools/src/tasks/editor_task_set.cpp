@@ -1,7 +1,7 @@
 #include "halley/tools/tasks/editor_task_set.h"
 #include <thread>
 #include <chrono>
-#include <iostream>
+#include "halley/support/logger.h"
 
 using namespace Halley;
 using namespace std::chrono_literals;
@@ -19,7 +19,7 @@ EditorTaskSet::~EditorTaskSet()
 	// Keep updating until they're all cancelled
 	while (!tasks.empty()) {
 		for (auto& t : tasks) {
-			std::cout << "Waiting for: " << t->getName() << std::endl;
+			Logger::logWarning("Waiting for: " + t->getName());
 		}
 		std::this_thread::sleep_for(25ms);
 		update(0.025f);

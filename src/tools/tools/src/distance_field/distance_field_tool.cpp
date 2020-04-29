@@ -2,6 +2,8 @@
 #include <halley/resources/resource_data.h>
 #include <halley/file_formats/image.h>
 #include "halley/tools/distance_field/distance_field_tool.h"
+
+#include "halley/support/logger.h"
 #include "halley/tools/distance_field/distance_field_generator.h"
 #include "halley/tools/file/filesystem.h"
 
@@ -10,7 +12,7 @@ using namespace Halley;
 int DistanceFieldTool::run(Vector<std::string> args)
 {
 	if (args.size() != 4) {
-		std::cout << "Usage: halley-cmd distField srcFile dstFile WxH radius" << std::endl;
+		Logger::logInfo("Usage: halley-cmd distField srcFile dstFile WxH radius");
 		return 1;
 	}
 

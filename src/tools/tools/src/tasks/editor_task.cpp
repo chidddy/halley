@@ -3,7 +3,6 @@
 #include <mutex>
 #include <gsl/gsl_assert>
 #include "halley/concurrency/concurrent.h"
-#include <iostream>
 #include "halley/support/logger.h"
 #include <chrono>
 

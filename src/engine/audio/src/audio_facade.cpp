@@ -33,11 +33,11 @@ void AudioFacade::setResources(Resources& res)
 
 void AudioFacade::init()
 {
-	std::cout << ConsoleColour(Console::GREEN) << "\nInitializing audio...\n" << ConsoleColour();
-	std::cout << "Audio devices available:" << std::endl;
+	Logger::logInfo("\nInitializing audio...");
+	Logger::logInfo("Audio devices available:");
 	int i = 0;
 	for (auto& device: getAudioDevices()) {
-		std::cout << "\t" << i++ << ": " << device->getName() << std::endl;
+		Logger::logInfo("\t" + toString(i++) + ": " + device->getName());
 	}
 }
 
@@ -79,12 +79,12 @@ void AudioFacade::doStartPlayback(int deviceNumber, bool createEngine)
 			started = true;
 			lastDeviceNumber = deviceNumber;
 
-			std::cout << "Audio Playback started.\n";
-			std::cout << "\tDevice: " << devices.at(deviceNumber)->getName() << " [" << deviceNumber << "]\n";
-			std::cout << "\tSample rate: " << audioSpec.sampleRate << "\n";
-			std::cout << "\tChannels: " << audioSpec.numChannels << "\n";
-			std::cout << "\tFormat: " << toString(audioSpec.format) << "\n";
-			std::cout << "\tBuffer size: " << audioSpec.bufferSize << std::endl;
+			Logger::logInfo("Audio Playback started.");
+			Logger::logInfo("\tDevice: " + devices.at(deviceNumber)->getName() + " [" + toString(deviceNumber) + "]");
+			Logger::logInfo("\tSample rate: " + toString(audioSpec.sampleRate));
+			Logger::logInfo("\tChannels: " + toString(audioSpec.numChannels));
+			Logger::logInfo("\tFormat: " + toString(audioSpec.format));
+			Logger::logInfo("\tBuffer size: " + toString(audioSpec.bufferSize));
 
 			resumePlayback();
 		} catch (...) {

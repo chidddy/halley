@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <gsl/gsl>
+#include <gsl/span>
 #include "utils.h"
 
 struct XXH64_state_s;

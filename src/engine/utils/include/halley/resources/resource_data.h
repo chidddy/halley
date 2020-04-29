@@ -26,7 +26,7 @@ This file is subject to the terms of halley_license.txt.
 #include <memory>
 #include <functional>
 #include <halley/concurrency/future.h>
-#include <gsl/gsl>
+#include <gsl/span>
 #include "metadata.h"
 
 namespace Halley {

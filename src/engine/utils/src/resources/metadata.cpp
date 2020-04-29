@@ -2,6 +2,7 @@
 #include "halley/resources/resource_data.h"
 #include "halley/bytes/byte_serializer.h"
 #include "halley/text/string_converter.h"
+#include <sstream>
 
 using namespace Halley;
 
@@ -162,7 +163,7 @@ String Metadata::toString() const
 	std::stringstream ss;
 	ss << "{ ";
 	for (auto& e: entries) {
-		ss << "\"" << e.first << "\": \"" << e.second << "\" ";
+		ss << "\"" << e.first.cppStr() << "\": \"" << e.second.cppStr() << "\" ";
 	}
 	ss << "}";
 	return ss.str();
@@ -173,11 +174,11 @@ String Metadata::toYAMLString() const
 	std::stringstream ss;
 	ss << "---\n";
 	for (auto& e: entries) {
-		ss << e.first << ": ";
+		ss << e.first.cppStr() << ": ";
 		if (e.second.isNumber()) {
-			ss << e.second;
+			ss << e.second.cppStr();
 		} else {
-			ss << "\"" << e.second << "\"";
+			ss << "\"" << e.second.cppStr() << "\"";
 		}
 		ss << "\n";
 	}

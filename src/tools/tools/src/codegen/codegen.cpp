@@ -81,7 +81,7 @@ void Codegen::writeFiles(Path dir, const CodeGenResult& files, Stats& stats)
 		Path filePath = dir / f.fileName;
 		std::stringstream ss;
 		for (auto& line: f.fileContents) {
-			ss << line;
+			ss << line.cppStr();
 			if constexpr (getPlatform() == GamePlatform::Windows) {
 				ss << "\r\n";
 			} else {

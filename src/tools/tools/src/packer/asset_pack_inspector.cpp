@@ -97,7 +97,7 @@ void AssetPackInspector::printData() const
 	auto stdCol = ConsoleColour();
 	auto infoCol = ConsoleColour(Console::MAGENTA);
 	auto strCol = ConsoleColour(Console::DARK_GREY);
-	std::cout << "Pack " << strCol << name << stdCol << "\n";
+	std::cout << "Pack " << strCol << name.cppStr() << stdCol << "\n";
 	std::cout << "  Table size: " << infoCol << rawTableSize << stdCol << " -> " << infoCol << tableSize << stdCol << "\n";
 
 	int lastType = -1;
@@ -111,12 +111,15 @@ void AssetPackInspector::printData() const
 		}
 
 		auto splitPath = entry.entry.path.split(':');
-		std::cout << "    [" << i << "] " << strCol << entry.key << stdCol << " [" << infoCol << toString(entry.hash, 16) << stdCol << "]: at " << infoCol << splitPath.at(0) << stdCol << ", " << infoCol << splitPath.at(1) << stdCol << " bytes, " << strCol << toString(entry.entry.meta) <<  stdCol << "\n";
+		std::cout << "    [" << i << "] " << strCol << entry.key.cppStr()
+			<< stdCol << " [" << infoCol << toString(entry.hash, 16).cppStr() << stdCol << "]: at "
+			<< infoCol << splitPath.at(0).cppStr() << stdCol << ", " << infoCol << splitPath.at(1).cppStr()
+			<< stdCol << " bytes, " << strCol << toString(entry.entry.meta).cppStr() << stdCol << "\n";
 
 		++i;
 	}
 
-	std::cout << "Hash: " << infoCol << toString(totalHash, 16) << stdCol << "\n";
+	std::cout << "Hash: " << infoCol << toString(totalHash, 16).cppStr() << stdCol << "\n";
 
 	std::cout << std::endl;
 }

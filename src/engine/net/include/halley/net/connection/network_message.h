@@ -1,5 +1,5 @@
 #pragma once
-#include <gsl/gsl>
+#include <gsl/span>
 #include <typeindex>
 #include "halley/utils/utils.h"
 #include "halley/data_structures/maybe.h"

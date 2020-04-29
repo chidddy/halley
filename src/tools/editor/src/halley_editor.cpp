@@ -89,13 +89,13 @@ void HalleyEditor::parseArguments(const std::vector<String>& args)
 
 	for (auto& arg : args) {
 		if (arg.startsWith("--")) {
-			std::cout << "Unknown argument \"" << arg << "\".\n";
+			std::cout << "Unknown argument \"" << arg.cppStr() << "\".\n";
 		} else {
 			if (!gotProjectPath) {
 				projectPath = arg.cppStr();
 				gotProjectPath = true;
 			} else {
-				std::cout << "Unknown argument \"" << arg << "\".\n";
+				std::cout << "Unknown argument \"" << arg.cppStr() << "\".\n";
 			}
 		}
 	}

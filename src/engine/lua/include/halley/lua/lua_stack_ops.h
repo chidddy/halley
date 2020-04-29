@@ -3,6 +3,7 @@
 #include "halley/data_structures/maybe.h"
 #include <cstdint>
 #include <cstddef>
+#include <functional>
 #include <type_traits>
 
 namespace Halley {

@@ -1,7 +1,7 @@
 #pragma once
 #include "halley/support/logger.h"
 #include "halley/net/connection/network_message.h"
-#include <gsl/gsl>
+#include <gsl/span>
 
 namespace Halley
 {

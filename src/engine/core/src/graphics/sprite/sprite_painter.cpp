@@ -1,7 +1,7 @@
 #include "graphics/sprite/sprite_painter.h"
 #include "graphics/sprite/sprite.h"
 #include "graphics/painter.h"
-#include <gsl/gsl>
+#include <gsl/span>
 #include "graphics/text/text_renderer.h"
 
 using namespace Halley;

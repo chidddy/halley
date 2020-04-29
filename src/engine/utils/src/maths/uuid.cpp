@@ -8,12 +8,12 @@ using namespace Halley;
 
 UUID::UUID()
 {
-	memset(bytes.data(), 0, 16);
+	memset(bytes, 0, 16);
 }
 
-UUID::UUID(std::array<Byte, 16> b)
+UUID::UUID(gsl::span<Byte, 16> b)
 {
-	memcpy(bytes.data(), b.data(), 16);
+	memcpy(bytes, b.data(), 16);
 }
 
 UUID::UUID(const String& str)
@@ -21,7 +21,7 @@ UUID::UUID(const String& str)
 	if (str.length() != 36) {
 		throw Exception("Invalid UUID format", HalleyExceptions::Utils);
 	}
-	const auto span = gsl::span<Byte, 16>(bytes.data(), 16);
+	const auto span = gsl::span<Byte, 16>(bytes, 16);
 	Encode::decodeBase16(str.substr(0, 8), span.subspan(0, 4));
 	Encode::decodeBase16(str.substr(9, 4), span.subspan(4, 2));
 	Encode::decodeBase16(str.substr(14, 4), span.subspan(6, 2));
@@ -31,23 +31,23 @@ UUID::UUID(const String& str)
 
 bool UUID::operator==(const UUID& other) const
 {
-	return memcmp(bytes.data(), other.bytes.data(), size_t(bytes.size())) == 0;
+	return memcmp(bytes, other.bytes, 16) == 0;
 }
 
 bool UUID::operator!=(const UUID& other) const
 {
-	return memcmp(bytes.data(), other.bytes.data(), size_t(bytes.size())) != 0;
+	return memcmp(bytes, other.bytes, 16) != 0;
 }
 
 bool UUID::operator<(const UUID& other) const
 {
-	return memcmp(bytes.data(), other.bytes.data(), size_t(bytes.size())) == -1;
+	return memcmp(bytes, other.bytes, 16) == -1;
 }
 
 String UUID::toString() const
 {
 	using namespace Encode;
-	const auto span = gsl::span<const Byte, 16>(bytes.data(), 16);
+	const auto span = gsl::span<const Byte, 16>(bytes);
 	return encodeBase16(span.subspan(0, 4)) + "-"
  		 + encodeBase16(span.subspan(4, 2)) + "-"
 		 + encodeBase16(span.subspan(6, 2)) + "-"
@@ -59,7 +59,7 @@ UUID UUID::generate()
 {
 	UUID result;
 	auto& bs = result.bytes;
-	Random::getGlobal().getBytes(gsl::span<Byte>(bs.data(), bs.size()));
+	Random::getGlobal().getBytes(gsl::span<Byte, 16>(bs));
 	bs[6] = (bs[6] & 0b00001111) | (4 << 4); // Version 4
 	bs[8] = (bs[8] & 0b00111111) | (0b10 << 6); // Variant 1
 	return result;

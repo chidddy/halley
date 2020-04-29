@@ -5,6 +5,7 @@
 #include "graphics_enums.h"
 #include <condition_variable>
 #include <halley/maths/vector4.h>
+#include <gsl/span>
 
 namespace Halley
 {

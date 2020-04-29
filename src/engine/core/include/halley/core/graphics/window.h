@@ -4,6 +4,7 @@
 #include <halley/text/halleystring.h>
 #include <halley/file/path.h>
 #include <halley/data_structures/maybe.h>
+#include <array>
 
 namespace Halley
 {

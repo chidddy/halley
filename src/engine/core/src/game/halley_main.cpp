@@ -27,7 +27,7 @@ int HalleyMain::runMain(GameLoader& loader, const Vector<std::string>& args)
 		if (core) {
 			core->onTerminatedInError(e.what());
 		} else {
-			std::cout << "Exception initialising core: " + String(e.what()) << std::endl;
+			std::cout << "Exception initialising core: " + String(e.what()).cppStr() << std::endl;
 		}
 		return 1;
 	} catch (...) {

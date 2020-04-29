@@ -1,8 +1,8 @@
 #pragma once
 
+#include <functional>
+
 #include "icode_generator.h"
-#include <halley/data_structures/hash_map.h>
-#include <gsl/gsl>
 #include "halley/file/path.h"
 
 namespace YAML

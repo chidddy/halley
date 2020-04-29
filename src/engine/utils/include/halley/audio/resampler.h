@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gsl/gsl>
+#include <gsl/span>
 #include <memory>
 
 struct SpeexResamplerState_;

@@ -17,6 +17,8 @@
 #include <fstream>
 #include <chrono>
 #include <ctime>
+#include <iomanip>
+
 #include "../dummy/dummy_plugins.h"
 #include "halley/core/devcon/devcon_client.h"
 #include "halley/net/connection/network_service.h"
@@ -71,8 +73,8 @@ Core::Core(std::unique_ptr<Game> g, Vector<std::string> _args)
 	srand(seed);
 
 	// Info
-	std::cout << "Program dir: " << ConsoleColour(Console::DARK_GREY) << environment->getProgramPath() << ConsoleColour() << std::endl;
-	std::cout << "Data dir: " << ConsoleColour(Console::DARK_GREY) << environment->getDataPath() << ConsoleColour() << std::endl;
+	std::cout << "Program dir: " << ConsoleColour(Console::DARK_GREY) << environment->getProgramPath().string() << ConsoleColour() << std::endl;
+	std::cout << "Data dir: " << ConsoleColour(Console::DARK_GREY) << environment->getDataPath().string() << ConsoleColour() << std::endl;
 
 	// Computer info
 #ifndef _DEBUG
@@ -437,11 +439,11 @@ void Core::showComputerInfo() const
 	std::cout << "Computer data:" << "\n";
 	//std::cout << "\tName: " << computerData.computerName << "\n";
 	//std::cout << "\tUser: " << computerData.userName << "\n";
-	std::cout << "\tOS:   " << ConsoleColour(Console::DARK_GREY) << computerData.osName << ConsoleColour() << "\n";
-	std::cout << "\tCPU:  " << ConsoleColour(Console::DARK_GREY) << computerData.cpuName << ConsoleColour() << "\n";
-	std::cout << "\tGPU:  " << ConsoleColour(Console::DARK_GREY) << computerData.gpuName << ConsoleColour() << "\n";
-	std::cout << "\tRAM:  " << ConsoleColour(Console::DARK_GREY) << String::prettySize(computerData.RAM) << ConsoleColour() << "\n";
-	std::cout << "\tTime: " << ConsoleColour(Console::DARK_GREY) << curTime << ConsoleColour() << "\n" << std::endl;
+	std::cout << "\tOS:   " << ConsoleColour(Console::DARK_GREY) << computerData.osName.cppStr() << ConsoleColour() << "\n";
+	std::cout << "\tCPU:  " << ConsoleColour(Console::DARK_GREY) << computerData.cpuName.cppStr() << ConsoleColour() << "\n";
+	std::cout << "\tGPU:  " << ConsoleColour(Console::DARK_GREY) << computerData.gpuName.cppStr() << ConsoleColour() << "\n";
+	std::cout << "\tRAM:  " << ConsoleColour(Console::DARK_GREY) << String::prettySize(computerData.RAM).cppStr() << ConsoleColour() << "\n";
+	std::cout << "\tTime: " << ConsoleColour(Console::DARK_GREY) << curTime.cppStr() << ConsoleColour() << "\n" << std::endl;
 }
 
 void Core::setStage(StageID stage)
@@ -574,5 +576,5 @@ void Core::log(LoggerLevel level, const String& msg)
 	} else if (level == LoggerLevel::Warning) {
 		std::cout << ConsoleColour(Console::YELLOW);
 	}
-	std::cout << msg << ConsoleColour() << std::endl;
+	std::cout << msg.cppStr() << ConsoleColour() << std::endl;
 }

@@ -23,7 +23,7 @@
 
 #include <memory>
 #include <vector>
-#include <gsl/gsl>
+#include <gsl/span>
 
 struct OggVorbis_File;
 

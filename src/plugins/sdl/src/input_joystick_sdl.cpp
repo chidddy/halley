@@ -22,7 +22,6 @@
 #include <SDL.h>
 #include <SDL_joystick.h>
 #include "input_joystick_sdl.h"
-#include <iostream>
 #include <halley/utils/utils.h>
 
 using namespace Halley;
@@ -33,7 +32,9 @@ InputJoystickSDL::InputJoystickSDL(int number)
 {
 	// Open
 	auto joy = SDL_JoystickOpen(index);
-	if (!joy) throw Exception("Could not open Joystick", HalleyExceptions::InputPlugin);
+	if (!joy) {
+		throw Exception("Could not open Joystick", HalleyExceptions::InputPlugin);
+	}
 	joystick = joy;
 
 	// Axes

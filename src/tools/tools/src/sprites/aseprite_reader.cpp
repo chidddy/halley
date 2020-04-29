@@ -1,10 +1,14 @@
 #include "aseprite_reader.h"
+
+#include <iomanip>
+
 #include "halley/tools/file/filesystem.h"
 #include "halley/core/graphics/sprite/sprite_sheet.h"
 #include "halley/file/path.h"
 #include "halley/file_formats/image.h"
 #include "../assets/importers/sprite_importer.h"
 #include "aseprite_file.h"
+#include <sstream>
 using namespace Halley;
 
 
@@ -105,7 +109,7 @@ void AsepriteReader::addImageData(int frameNumber, std::vector<ImageData>& frame
 	
 	if (!group->isEmpty())
 	{
-		ss << "_" << group.value();
+		ss << "_" << group.value().cppStr();
 	}
 	if (hasFrameNumber) {
 		ss << "_" << std::setw(3) << std::setfill('0') << imgData.frameNumber;

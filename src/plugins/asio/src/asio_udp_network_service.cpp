@@ -3,9 +3,10 @@
 #include "halley/net/connection/network_packet.h"
 #include "asio_udp_network_service.h"
 #include "asio_udp_connection.h"
-#include <iostream>
 #include <unordered_map>
 #include <halley/support/exception.h>
+
+#include "halley/support/logger.h"
 
 using namespace Halley;
 namespace asio = boost::asio;
@@ -39,14 +40,14 @@ AsioUDPNetworkService::~AsioUDPNetworkService()
 		try {
 			conn.second->terminateConnection();
 		} catch (...) {
-			std::cout << "Error terminating connection on ~NetworkService()" << std::endl;
+			Logger::logError("Error terminating connection on ~NetworkService()");
 		}
 	}
 	try {
 		service.poll();
 		socket.shutdown(UDPSocket::shutdown_both);
 	} catch (...) {
-		std::cout << "Error polling service on ~NetworkService()" << std::endl;
+		Logger::logError("Error polling service on ~NetworkService()");
 	}
 }
 
@@ -140,7 +141,7 @@ void AsioUDPNetworkService::receiveNext()
 
 			receivePacket(gsl::span<gsl::byte>(receiveBuffer.data(), size), errorMsgPtr);
 		} catch (...) {
-			std::cout << "Exception while receiving a packet." << std::endl;
+			Logger::logError("Exception while receiving a packet.");
 		}
 
 		receiveNext();
@@ -150,7 +151,7 @@ void AsioUDPNetworkService::receiveNext()
 void AsioUDPNetworkService::receivePacket(gsl::span<gsl::byte> received, std::string* error)
 {
 	if (error) {
-		std::cout << "Error receiving packet: " << (*error) << std::endl;
+		Logger::logError("Error receiving packet: " + (*error));
 		// Find the owner of this remote endpoint
 		for (auto& conn : activeConnections) {
 			if (conn.second->matchesEndpoint(remoteEndpoint)) {
@@ -173,7 +174,7 @@ void AsioUDPNetworkService::receivePacket(gsl::span<gsl::byte> received, std::st
 	if (bytes[0] & 0x80) {
 		if (received.size_bytes() < 2) {
 			// Invalid header
-			std::cout << "Invalid header\n";
+			Logger::logError("Invalid header");
 			return;
 		}
 		dst[1] = received[1];

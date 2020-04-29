@@ -33,9 +33,7 @@ Exception::Exception(String msg, int errorCode) noexcept
 		stackTrace = Debug::getCallStack(4);
 	}
 
-	std::stringstream ss;
-	ss << this->msg << "\n" << stackTrace;
-	fullMsg = ss.str();
+	fullMsg = this->msg + "\n" + stackTrace;
 }
 
 const char* Exception::what() const noexcept

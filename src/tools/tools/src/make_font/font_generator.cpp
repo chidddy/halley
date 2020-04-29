@@ -4,6 +4,9 @@
 #include <atomic>
 
 #include "halley/tools/make_font/font_generator.h"
+
+#include <iostream>
+
 #include "halley/tools/distance_field/distance_field_generator.h"
 #include <halley/data_structures/bin_pack.h>
 #include <halley/file_formats/image.h>
@@ -272,7 +275,7 @@ std::vector<Path> FontGeneratorResult::write(Path dir, bool verbose) const
 	Path binPath = fileName.replaceExtension(".font");
 	Path metaPath = pngPath.replaceExtension(".png.meta");
 	if (verbose) {
-		std::cout << "Saving " << pngPath << ", " << binPath << ", and " << metaPath << std::endl;
+		std::cout << "Saving " << pngPath.string() << ", " << binPath.string() << ", and " << metaPath.string() << std::endl;
 	}
 
 	FileSystem::writeFile(dir / pngPath, image->savePNGToBytes());

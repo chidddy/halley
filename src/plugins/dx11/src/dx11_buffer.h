@@ -1,5 +1,5 @@
 #pragma once
-#include <gsl/gsl>
+#include <gsl/span>
 #include <d3d11.h>
 #undef min
 #undef max

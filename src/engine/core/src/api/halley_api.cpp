@@ -2,6 +2,7 @@
 #include "api/halley_api.h"
 #include <halley/plugin/plugin.h>
 #include "halley/audio/audio_facade.h"
+#include <iostream>
 
 using namespace Halley;
 
@@ -98,7 +99,7 @@ std::unique_ptr<HalleyAPI> HalleyAPI::create(CoreAPIInternal* core, int flags)
 	{
 		auto plugins = core->getPlugins(PluginType::SystemAPI);
 		if (!plugins.empty()) {
-			std::cout << "System plugin: " << plugins[0]->getName() << "\n";
+			std::cout << "System plugin: " << plugins[0]->getName().cppStr() << "\n";
 			system.reset(dynamic_cast<SystemAPIInternal*>(plugins[0]->createAPI(nullptr)));
 		} else {
 			throw Exception("No suitable system plugins found.", HalleyExceptions::Core);
@@ -108,7 +109,7 @@ std::unique_ptr<HalleyAPI> HalleyAPI::create(CoreAPIInternal* core, int flags)
 	if (flags & HalleyAPIFlags::Video) {
 		auto plugins = core->getPlugins(PluginType::GraphicsAPI);
 		if (!plugins.empty()) {
-			std::cout << "Video plugin: " << plugins[0]->getName() << "\n";
+			std::cout << "Video plugin: " << plugins[0]->getName().cppStr() << "\n";
 			api->videoInternal.reset(dynamic_cast<VideoAPIInternal*>(plugins[0]->createAPI(system.get())));
 		} else {
 			throw Exception("No suitable video plugins found.", HalleyExceptions::Core);
@@ -118,7 +119,7 @@ std::unique_ptr<HalleyAPI> HalleyAPI::create(CoreAPIInternal* core, int flags)
 	if (flags & HalleyAPIFlags::Input) {
 		auto plugins = core->getPlugins(PluginType::InputAPI);
 		if (!plugins.empty()) {
-			std::cout << "Input plugin: " << plugins[0]->getName() << "\n";
+			std::cout << "Input plugin: " << plugins[0]->getName().cppStr() << "\n";
 			api->inputInternal.reset(dynamic_cast<InputAPIInternal*>(plugins[0]->createAPI(system.get())));
 		} else {
 			throw Exception("No suitable input plugins found.", HalleyExceptions::Core);
@@ -128,7 +129,7 @@ std::unique_ptr<HalleyAPI> HalleyAPI::create(CoreAPIInternal* core, int flags)
 	if (flags & HalleyAPIFlags::Audio) {
 		auto plugins = core->getPlugins(PluginType::AudioOutputAPI);
 		if (!plugins.empty()) {
-			std::cout << "Audio output plugin: " << plugins[0]->getName() << "\n";
+			std::cout << "Audio output plugin: " << plugins[0]->getName().cppStr() << "\n";
 			api->audioOutputInternal.reset(dynamic_cast<AudioOutputAPIInternal*>(plugins[0]->createAPI(system.get())));
 			api->audioInternal = std::make_unique<AudioFacade>(*api->audioOutputInternal, *system);
 		} else {
@@ -139,7 +140,7 @@ std::unique_ptr<HalleyAPI> HalleyAPI::create(CoreAPIInternal* core, int flags)
 	if (flags & HalleyAPIFlags::Network) {
 		auto plugins = core->getPlugins(PluginType::NetworkAPI);
 		if (!plugins.empty()) {
-			std::cout << "Network plugin: " << plugins[0]->getName() << "\n";
+			std::cout << "Network plugin: " << plugins[0]->getName().cppStr() << "\n";
 			api->networkInternal.reset(dynamic_cast<NetworkAPIInternal*>(plugins[0]->createAPI(system.get())));
 		} else {
 			throw Exception("No suitable network plugins found.", HalleyExceptions::Core);
@@ -149,7 +150,7 @@ std::unique_ptr<HalleyAPI> HalleyAPI::create(CoreAPIInternal* core, int flags)
 	if (flags & HalleyAPIFlags::Platform) {
 		auto plugins = core->getPlugins(PluginType::PlatformAPI);
 		if (!plugins.empty()) {
-			std::cout << "Platform plugin: " << plugins[0]->getName() << "\n";
+			std::cout << "Platform plugin: " << plugins[0]->getName().cppStr() << "\n";
 			api->platformInternal.reset(dynamic_cast<PlatformAPIInternal*>(plugins[0]->createAPI(system.get())));
 		} else {
 			throw Exception("No suitable network plugins found.", HalleyExceptions::Core);
@@ -159,7 +160,7 @@ std::unique_ptr<HalleyAPI> HalleyAPI::create(CoreAPIInternal* core, int flags)
 	if (flags & HalleyAPIFlags::Movie) {
 		auto plugins = core->getPlugins(PluginType::MovieAPI);
 		if (!plugins.empty()) {
-			std::cout << "Movie plugin: " << plugins[0]->getName() << "\n";
+			std::cout << "Movie plugin: " << plugins[0]->getName().cppStr() << "\n";
 			api->movieInternal.reset(dynamic_cast<MovieAPIInternal*>(plugins[0]->createAPI(system.get())));
 		} else {
 			throw Exception("No suitable movie plugins found.", HalleyExceptions::Core);

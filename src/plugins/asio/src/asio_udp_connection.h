@@ -13,7 +13,7 @@
 #include <deque>
 #include <array>
 #include <string>
-#include <gsl/gsl>
+#include <gsl/span>
 
 namespace Halley
 {

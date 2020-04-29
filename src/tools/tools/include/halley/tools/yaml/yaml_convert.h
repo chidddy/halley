@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gsl/gsl>
+#include <gsl/span>
 #include "halley/file_formats/config_file.h"
 
 namespace YAML {

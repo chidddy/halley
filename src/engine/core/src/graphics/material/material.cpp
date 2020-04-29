@@ -6,6 +6,7 @@
 #include "halley/core/graphics/shader.h"
 #include "api/video_api.h"
 #include "halley/utils/hash.h"
+#include <gsl/gsl>
 
 using namespace Halley;
 
@@ -218,7 +219,7 @@ bool Material::operator==(const Material& other) const
 
 	constexpr bool useHash = true;
 
-	if (useHash) {
+	if constexpr (useHash) {
 		// If the hashes match, we'll assume they're the same
 		// There's a chance this will fail, but... what are the odds? :D
 		// :D :D

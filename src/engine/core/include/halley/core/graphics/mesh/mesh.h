@@ -3,6 +3,7 @@
 #include "halley/resources/resource.h"
 #include "halley/maths/vector4.h"
 #include "../graphics_enums.h"
+#include <gsl/span>
 
 namespace Halley {
 	class ResourceLoader;

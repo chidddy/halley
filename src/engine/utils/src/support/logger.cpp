@@ -35,7 +35,7 @@ void StdOutSink::log(LoggerLevel level, const String& msg)
 	case LoggerLevel::Info:
 		break;
 	}
-	std::cout << msg << ConsoleColour() << '\n';
+	std::cout << msg.cppStr() << ConsoleColour() << '\n';
 }
 
 void Logger::setInstance(Logger& logger)
@@ -62,7 +62,7 @@ void Logger::log(LoggerLevel level, const String& msg)
 			s->log(level, msg);
 		}
 	} else {
-		std::cout << msg << '\n';
+		std::cout << msg.cppStr() << '\n';
 	}
 }
 

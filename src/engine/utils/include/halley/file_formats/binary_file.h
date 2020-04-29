@@ -2,7 +2,7 @@
 #include <memory>
 #include "halley/resources/resource.h"
 #include "halley/utils/utils.h"
-#include <gsl/gsl>
+#include <gsl/span>
 #include "halley/core/resources/resource_collection.h"
 
 namespace Halley

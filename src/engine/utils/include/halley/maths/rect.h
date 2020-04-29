@@ -333,13 +333,6 @@ namespace Halley {
 		}
 	};
 
-	template <typename T>
-	std::ostream& operator<< (std::ostream& ostream, const Rect2D<T>& v)
-	{
-		ostream << "(" << v.getTopLeft().x << ", " << v.getTopLeft().y << ", " << v.getWidth() << ", " << v.getHeight() << ")";
-		return ostream;
-	}
-
 	template <typename T, typename V>
 	inline Rect2D<T> operator * (V f, Rect2D<T> v)
 	{

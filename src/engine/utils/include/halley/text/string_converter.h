@@ -4,7 +4,7 @@
 #include <algorithm>
 #include "halleystring.h"
 #include <halley/support/exception.h>
-#include <array>
+#include <charconv>
 
 namespace Halley
 {
@@ -146,18 +146,15 @@ namespace Halley
 	template <typename T, typename std::enable_if<std::is_floating_point<T>::value, int>::type = 0>
 	String toString(T src, int precisionDigits = -1, char decimalSeparator = '.')
 	{
-		Expects(precisionDigits >= -1 && precisionDigits <= 20);
-		std::stringstream str;
-		if (precisionDigits != -1) {
-			str << std::fixed << std::setprecision(precisionDigits);
+		char buffer[32];
+		auto [ptr, ec] = std::to_chars(buffer, buffer + 32, src, std::chars_format::fixed, precisionDigits);
+		if (ec != std::errc()) {
+			throw Exception("Unable to convert float to string", HalleyExceptions::Utils);
 		}
-		str << src;
-
-		String result;
+		auto result = String(buffer, ptr - buffer);
+		
 		if (precisionDigits == -1) {
-			result = String::prettyFloat(str.str());
-		} else {
-			result = str.str();
+			result = String::prettyFloat(result);
 		}
 
 		if (decimalSeparator != '.') {
@@ -171,17 +168,19 @@ namespace Halley
 	String toString(T value, int base = 10, int width = 1)
 	{
 		Expects(base == 10 || base == 16 || base == 8);
-		std::stringstream ss;
-		if (base == 16) {
-			ss.setf(std::ios::hex, std::ios::basefield);
-		} else if (base == 8) {
-			ss.setf(std::ios::oct, std::ios::basefield);
+
+		char buffer[32];
+		auto [ptr, ec] = std::to_chars(buffer, buffer + 32, value, base);
+		if (ec != std::errc()) {
+			throw Exception("Unable to convert integer to string", HalleyExceptions::Utils);
 		}
-		if (width > 1) {
-			ss << std::setfill('0') << std::setw(width);
+
+		auto result = String(buffer, ptr - buffer);
+		if (width > static_cast<int>(result.length())) {
+			return std::string('0', width - static_cast<int>(result.length())) + result;
+		} else {
+			return result;
 		}
-		ss << value;
-		return ss.str();
 	}
 
 	template <typename T, typename std::enable_if<!std::is_integral<T>::value && !std::is_floating_point<T>::value, int>::type = 0>

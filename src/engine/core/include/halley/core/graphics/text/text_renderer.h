@@ -7,6 +7,7 @@
 #include "halley/data_structures/maybe.h"
 #include <gsl/span>
 #include <map>
+#include <functional>
 
 namespace Halley
 {

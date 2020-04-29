@@ -4,7 +4,7 @@
 #include "halley/text/halleystring.h"
 #include "halley/core/graphics/texture.h"
 #include "halley/core/graphics/material/material_parameter.h"
-#include <gsl/gsl>
+#include <gsl/span>
 
 namespace Halley
 {

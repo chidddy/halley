@@ -1,7 +1,7 @@
 #pragma once
 #include <halley/maths/vector2.h>
 #include <halley/text/halleystring.h>
-#include <gsl/gsl>
+#include <gsl/span>
 
 namespace Halley
 {

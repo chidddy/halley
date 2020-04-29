@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "halley/maths/vector2.h"
 #include "halley/maths/rect.h"
 

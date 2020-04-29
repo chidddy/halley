@@ -1,6 +1,6 @@
 #pragma once
 #include "../utils/utils.h"
-#include <gsl/gsl>
+#include <gsl/span>
 #include <limits>
 
 namespace Halley {

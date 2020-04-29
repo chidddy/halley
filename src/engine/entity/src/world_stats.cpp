@@ -1,4 +1,7 @@
 #include "world_stats.h"
+
+#include <iomanip>
+
 #include "halley/core/graphics/render_context.h"
 #include "halley/core/graphics/text/font.h"
 #include "halley/core/resources/resources.h"
@@ -6,6 +9,7 @@
 #include "world.h"
 #include "system.h"
 #include "halley/text/string_converter.h"
+#include <sstream>
 
 using namespace Halley;
 

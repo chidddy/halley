@@ -21,6 +21,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include "vector2.h"
 
 namespace Halley {

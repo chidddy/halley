@@ -1,7 +1,8 @@
 #include "halley/tools/assets/delete_assets_task.h"
+
+#include "halley/support/logger.h"
 #include "halley/tools/project/project.h"
 #include "halley/tools/assets/import_assets_database.h"
-#include <iostream>
 #include "halley/tools/file/filesystem.h"
 
 using namespace Halley;
@@ -9,8 +10,8 @@ using namespace Halley;
 DeleteAssetsTask::DeleteAssetsTask(ImportAssetsDatabase& db, Path assetsPath, Vector<ImportAssetsDatabaseEntry> assets)
 	: EditorTask("Deleting assets", true, true)
 	, db(db)
-	, assetsPath(assetsPath)
-	, assets(assets)
+	, assetsPath(std::move(assetsPath))
+	, assets(std::move(assets))
 {
 }
 
@@ -29,7 +30,7 @@ void DeleteAssetsTask::run()
 			}
 			db.markDeleted(asset);
 		} catch (std::exception& e) {
-			std::cout << "Error removing asset \"" << asset.assetId << "\": " << e.what() << std::endl;
+			Logger::logError("Error removing asset \"" + asset.assetId + "\": " + e.what());
 		}
 	}
 	db.save();

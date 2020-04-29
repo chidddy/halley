@@ -1,5 +1,6 @@
 #pragma once
 #include "painter.h"
+#include <functional>
 
 namespace Halley
 {

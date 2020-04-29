@@ -21,9 +21,6 @@
 
 #pragma once
 
-#include <iostream>
-#include <iomanip>
-#include <sstream>
 #include <cmath>
 #include "halley/text/halleystring.h"
 #include <gsl/gsl_assert>
@@ -98,17 +95,21 @@ namespace Halley {
 
 		String toString() const
 		{
-			std::stringstream ss;
-			ss << "#" << std::hex;
-			writeByte(ss, r);
-			writeByte(ss, g);
-			writeByte(ss, b);
-			if (byteRep(a) != 255) writeByte(ss, a);
-			ss.flush();
-			return ss.str();
+			char buffer[16];
+			buffer[0] = 0;
+			const auto br = byteRep(r);
+			const auto bg = byteRep(g);
+			const auto bb = byteRep(b);
+			const auto ba = byteRep(a);
+			if (ba != 255) {
+				std::snprintf(buffer, 16, "#%02d%02d%02d%02d", br, bg, bb, ba);
+			} else {
+				std::snprintf(buffer, 16, "#%02d%02d%02d", br, bg, bb);
+			}
+			return buffer;
 		}
 
-		static Colour4 fromString(String str)
+		static Colour4 fromString(const String& str)
 		{
 			Colour4 col;
 			size_t len = str.length();
@@ -197,13 +198,9 @@ namespace Halley {
 			return convertColour<T, uint8_t>(v);
 		}
 
-		static T parseHex(String str)
+		static T parseHex(const String& str)
 		{
-			std::stringstream ss(str);
-			int value;
-			ss << std::hex;
-			ss >> value;
-			return convertColour<uint8_t, T>(static_cast<uint8_t>(value));
+			return convertColour<uint8_t, T>(static_cast<uint8_t>(std::stoi(str, nullptr, 16)));
 		}
 
 		template <typename U>

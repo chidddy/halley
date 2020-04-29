@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <array>
-#include <gsl/gsl>
+#include <gsl/span>
 #include "halley/maths/vector2.h"
 #include "halley/maths/colour.h"
 #include "halley/file_formats/image.h"

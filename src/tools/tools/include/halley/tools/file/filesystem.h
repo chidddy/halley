@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gsl/gsl>
+#include <gsl/span>
 #include "halley/utils/utils.h"
 #include <vector>
 #include "halley/file/path.h"

@@ -4,6 +4,7 @@
 #include "halley/maths/vector4.h"
 #include "halley/maths/rect.h"
 #include "ui_element.h"
+#include <array>
 
 namespace Halley {
 	enum class UISizerType {

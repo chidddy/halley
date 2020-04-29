@@ -22,7 +22,6 @@
 #pragma once
 
 #include "halley/text/halleystring.h"
-#include <list>
 #include <array>
 #include <functional>
 

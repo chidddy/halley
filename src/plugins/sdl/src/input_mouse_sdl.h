@@ -21,6 +21,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include "halley/core/input/input_button_base.h"
 
 namespace Halley {

@@ -1,6 +1,7 @@
 #pragma once
 #include "render_target.h"
 #include "halley/data_structures/maybe.h"
+#include <memory>
 
 namespace Halley
 {

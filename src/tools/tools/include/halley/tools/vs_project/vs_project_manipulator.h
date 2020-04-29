@@ -1,4 +1,6 @@
 #pragma once
+#include <memory>
+
 #include "halley/utils/utils.h"
 #include "halley/text/halleystring.h"
 #include <set>

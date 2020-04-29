@@ -1,5 +1,5 @@
 #include "dx11_blend.h"
-#include <gsl/gsl>
+#include <gsl/span>
 #include "dx11_video.h"
 #include "halley/core/graphics/blend.h"
 using namespace Halley;

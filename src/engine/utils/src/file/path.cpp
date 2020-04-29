@@ -145,7 +145,7 @@ String Path::getString() const
 		} else {
 			s << "/";
 		}
-		s << p;
+		s << p.cppStr();
 	}
 	return s.str();
 }
@@ -345,11 +345,6 @@ bool Path::isAbsolute() const
 bool Path::isEmpty() const
 {
 	return pathParts.empty() || pathParts[0].isEmpty();
-}
-
-std::ostream& Halley::operator<<(std::ostream& os, const Path& p)
-{
-	return (os << p.string());
 }
 
 Path Path::getRoot() const

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "halley_gl.h"
-#include <gsl/gsl>
+#include <gsl/span>
 
 namespace Halley
 {

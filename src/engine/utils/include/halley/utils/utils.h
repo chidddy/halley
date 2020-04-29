@@ -22,13 +22,7 @@
 #pragma once
 
 #include <algorithm>
-#include <limits>
-#include <list>
 #include <cmath>
-
-#include <memory>
-#include <array>
-#include <functional>
 #include <halley/data_structures/vector.h>
 #include <gsl/gsl_assert>
 

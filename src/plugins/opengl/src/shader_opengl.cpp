@@ -5,6 +5,7 @@
 #include "halley/core/graphics/material/material_definition.h"
 #include "gl_utils.h"
 #include "halley_gl.h"
+#include "halley/support/logger.h"
 
 using namespace Halley;
 
@@ -158,7 +159,7 @@ void ShaderOpenGL::compile()
 		if (result == GL_FALSE) {
 			throw Exception("Error loading shader: " + log, HalleyExceptions::VideoPlugin);
 		} else if (infolen > 0) {
-			std::cout << ConsoleColour(Console::YELLOW) << "\nIn shader \"" << name << "\":\n==========\n" << log << "\n==========" << ConsoleColour() << std::endl;
+			Logger::logWarning("In shader \"" + name + "\":\n==========\n" + log + "\n==========");
 		}
 
 		uniformLocations.clear();

@@ -2,12 +2,13 @@
 
 #include "halley/text/halleystring.h"
 #include "halley/utils/utils.h"
+#include <gsl/span>
 
 namespace Halley {
     class UUID {
     public:
         UUID();
-        UUID(std::array<Byte, 16> bytes);
+        UUID(gsl::span<Byte, 16> bytes);
         explicit UUID(const String& str);
 
         bool operator==(const UUID& other) const;
@@ -20,6 +21,6 @@ namespace Halley {
     	bool isValid() const;
 
     private:
-		std::array<Byte, 16> bytes;
+		Byte bytes[16];
     };
 }

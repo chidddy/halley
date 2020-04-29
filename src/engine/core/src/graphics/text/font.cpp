@@ -6,6 +6,7 @@
 #include "halley/bytes/byte_serializer.h"
 #include "resources/resources.h"
 #include "halley/text/string_converter.h"
+#include <iostream>
 
 using namespace Halley;
 
@@ -236,7 +237,7 @@ void Font::printGlyphs() const
 	if (curRange) {
 		ranges.push_back(*curRange);
 	}
-	std::cout << name << ": [";
+	std::cout << name.cppStr() << ": [";
 	for (auto& r: ranges) {
 		if (r.start != r.end) {
 			std::cout << "[" << r.start << ", " << r.end << "], ";

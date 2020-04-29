@@ -11,6 +11,7 @@
 #include "halley/text/string_converter.h"
 #include "constant_buffer_opengl.h"
 #include "halley/core/graphics/material/uniform_type.h"
+#include <sstream>
 using namespace Halley;
 
 #ifdef _MSC_VER
@@ -119,7 +120,7 @@ void VideoOpenGL::initOpenGL()
 	glGetIntegerv(GL_NUM_EXTENSIONS, &nExtensions);
 	for (int i = 0; i < nExtensions; i++) {
 		String str = reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i));
-		std::cout << str << " ";
+		std::cout << str.cppStr() << " ";
 	}
 #else
 	String str = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
@@ -238,7 +239,7 @@ void VideoOpenGL::onGLDebugMessage(unsigned int source, unsigned int type, unsig
 #if HAS_EASTL
 		ss << "[" << glEnumMap.at(source).second << "] [" << glEnumMap.at(type).second << "] [" << glEnumMap.at(severity).second << "] " << id << ": " << message;
 #else
-		ss << "[" << glEnumMap.at(source) << "] [" << glEnumMap.at(type) << "] [" << glEnumMap.at(severity) << "] " << id << ": " << message;
+		ss << "[" << glEnumMap.at(source).cppStr() << "] [" << glEnumMap.at(type).cppStr() << "] [" << glEnumMap.at(severity).cppStr() << "] " << id << ": " << message.cppStr();
 #endif
 		std::string str = ss.str();
 

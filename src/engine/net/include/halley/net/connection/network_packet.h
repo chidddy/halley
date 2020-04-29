@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include <gsl/gsl>
+#include <gsl/span>
 #include "halley/utils/utils.h"
 
 namespace Halley

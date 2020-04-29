@@ -23,10 +23,8 @@
 #pragma once
 
 #include <string>
-#include <sstream>
 #include <halley/data_structures/vector.h>
 #include <gsl/gsl_assert>
-#include <iomanip>
 #include <cstdint>
 
 namespace Halley {
@@ -139,8 +137,8 @@ namespace Halley {
 		static size_t getUTF8Len(const StringUTF32 &utf32);
 		static size_t getUTF16Len(const StringUTF32 &utf32);
 
-		inline std::string& cppStr() { return str; }
-		inline const std::string& cppStr() const { return str; }
+		std::string& cppStr() { return str; }
+		const std::string& cppStr() const { return str; }
 
 		Vector<String> split(char delimiter) const;
 		Vector<String> split(String delimiter) const;
@@ -172,8 +170,6 @@ namespace Halley {
 	};
 
 	String operator+ (const String& lhp, const String& rhp);
-	std::ostream& operator<< (std::ostream& os, const String& rhp);
-	std::istream& operator>> (std::istream& is, String& rhp);
 
 	using StringArray = Vector<String>;
 

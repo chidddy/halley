@@ -2,6 +2,7 @@
 
 #include "../ui_behaviour.h"
 #include "../ui_anchor.h"
+#include <functional>
 
 namespace Halley {
 	class UIAnchor;

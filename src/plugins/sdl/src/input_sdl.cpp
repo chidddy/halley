@@ -71,7 +71,7 @@ void InputSDL::init()
 			joysticks.push_back(std::move(joy));
 			sdlJoys[i] = dynamic_cast<InputJoystickSDL*>(joysticks.back().get());
 
-			std::cout << "\tInitialized SDL joystick: \"" << ConsoleColour(Console::DARK_GREY) << name << ConsoleColour() << "\".\n";
+			std::cout << "\tInitialized SDL joystick: \"" << ConsoleColour(Console::DARK_GREY) << name.cppStr() << ConsoleColour() << "\".\n";
 		}
 	}
 

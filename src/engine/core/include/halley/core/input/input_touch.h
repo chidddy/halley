@@ -23,6 +23,7 @@
 
 #include <halley/maths/vector2.h>
 #include <halley/time/halleytime.h>
+#include <memory>
 
 namespace Halley {
 	class InputTouch {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gsl/gsl>
+#include <gsl/span>
 #include <halley/text/halleystring.h>
 #include "lua_reference.h"
 #include <unordered_map>

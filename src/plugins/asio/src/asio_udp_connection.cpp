@@ -1,6 +1,7 @@
-#include <iostream>
 #include "asio_udp_connection.h"
 #include "halley/net/connection/network_packet.h"
+#include "halley/support/logger.h"
+#include "halley/text/string_converter.h"
 
 using namespace Halley;
 
@@ -119,7 +120,7 @@ void AsioUDPConnection::open(short id)
 
 void AsioUDPConnection::onOpen(short id)
 {
-	std::cout << "Connection open on id = " << id << std::endl;
+	Logger::logInfo("Connection open on id = " + toString(id));
 	connectionId = id;
 	status = ConnectionStatus::Connected;
 }
@@ -137,7 +138,7 @@ void AsioUDPConnection::sendNext()
 	socket.async_send_to(boost::asio::buffer(sendBuffer, size), remote, [this] (const boost::system::error_code& error, std::size_t)
 	{
 		if (error) {
-			std::cout << "Error sending packet: " << error.message() << std::endl;
+			Logger::logError("Error sending packet: " + error.message());
 			close();
 		} else if (!pendingSend.empty()) {
 			sendNext();

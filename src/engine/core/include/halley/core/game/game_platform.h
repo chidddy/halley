@@ -5,6 +5,7 @@
 #endif
 
 #include "halley/text/string_converter.h"
+#include <array>
 
 namespace Halley {
 	enum class GamePlatform {

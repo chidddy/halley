@@ -2,7 +2,7 @@
 
 #include <halley/utils/utils.h>
 #include <vector>
-#include <gsl/gsl>
+#include <gsl/span>
 #include "halley/data_structures/flat_map.h"
 #include "halley/maths/vector2.h"
 #include "halley/maths/rect.h"

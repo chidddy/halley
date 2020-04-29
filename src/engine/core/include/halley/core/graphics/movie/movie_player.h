@@ -3,10 +3,11 @@
 #include <halley/maths/vector2.h>
 #include <halley/time/halleytime.h>
 #include <halley/core/graphics/sprite/sprite.h>
-#include <gsl/gsl>
+#include <gsl/span>
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <list>
 
 namespace Halley
 {

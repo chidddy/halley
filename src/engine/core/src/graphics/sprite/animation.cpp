@@ -8,6 +8,8 @@
 #include "halley/bytes/byte_serializer.h"
 #include <gsl/gsl_assert>
 #include <utility>
+#include <sstream>
+#include <iomanip>
 
 using namespace Halley;
 

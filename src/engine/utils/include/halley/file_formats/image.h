@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <gsl/gsl>
+#include <gsl/span>
 #include "halley/maths/vector2.h"
 #include "halley/text/halleystring.h"
 #include "halley/resources/resource.h"

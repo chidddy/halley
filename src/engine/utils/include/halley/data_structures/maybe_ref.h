@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gsl/gsl>
+#include <gsl/span>
 
 namespace Halley {
     // Note: it's important that this class has the same layout and binary structure as a plain pointer

@@ -23,11 +23,9 @@
 #pragma once
 
 #include <cmath>
-#include <iostream>
 #include "angle.h"
 #include <halley/utils/utils.h>
 #include "halley/text/string_converter.h"
-#include <gsl/gsl>
 
 #ifdef min
 #undef min
@@ -220,12 +218,6 @@ namespace Halley {
 		return Vector2D<T,U>(T(v.x * f),T(v.y * f));
 	}
 
-	template <typename T,class U>
-	std::ostream& operator<< (std::ostream& ostream, const Vector2D<T, U>& v)
-	{
-		ostream << "(" << v.x << "," << v.y << ")" ; return ostream;
-	}
-	
 	////////////
 	// Typedefs
 	typedef Vector2D<double,Angle<double> > Vector2d;

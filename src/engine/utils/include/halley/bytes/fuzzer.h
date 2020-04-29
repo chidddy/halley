@@ -2,6 +2,7 @@
 #include <vector>
 #include "halley/utils/utils.h"
 #include "halley/maths/random.h"
+#include <functional>
 
 namespace Halley
 {

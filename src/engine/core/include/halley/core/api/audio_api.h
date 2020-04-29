@@ -1,7 +1,7 @@
 #pragma once
 
 #include <functional>
-#include <gsl/gsl>
+#include <gsl/span>
 #include <memory>
 #include <vector>
 #include "halley/text/halleystring.h"

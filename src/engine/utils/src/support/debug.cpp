@@ -174,7 +174,7 @@ void Debug::printLastTraces()
 		if (!trace.filename) {
 			break;
 		}
-		std::cout << " - " << trace.filename << ":" << toString(trace.line);
+		std::cout << " - " << trace.filename << ":" << toString(trace.line).cppStr();
 		if (trace.arg[0] != 0) {
 			std::cout << " [" << trace.arg.data() << "]";
 		}
