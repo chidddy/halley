@@ -63,11 +63,13 @@ namespace Halley {} // Get GitHub to realise this is C++ :3
 #include "resources/resource_data.h"
 
 #include "support/assert.h"
-#include "support/console.h"
 #include "support/debug.h"
 #include "support/exception.h"
 #include "support/logger.h"
-#include "support/redirect_stream.h"
+
+// These are not auto-included because they include <iostream>
+//#include "support/console.h"
+//#include "support/redirect_stream.h"
 
 #include "text/encode.h"
 #include "text/halleystring.h"
