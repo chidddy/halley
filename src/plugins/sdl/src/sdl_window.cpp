@@ -1,3 +1,6 @@
+#define WIN32_LEAN_AND_MEAN
+#define WINDOWS_IGNORE_PACKING_MISMATCH
+
 #include "sdl_window.h"
 #include "halley/os/os.h"
 #include <SDL_syswm.h>
