@@ -55,5 +55,5 @@ namespace Halley
 #elif defined(HALLEY_SHARED_LIBRARY)
 	#define HalleyGame(T) HALLEY_EXPORT IHalleyEntryPoint* getHalleyEntry() { Halley::InitEntities<T>(); static HalleyEntryPoint<T> entry; return &entry; }
 #elif defined(HALLEY_STATIC_LIBRARY)
-	#define HalleyGame(T) IHalleyEntryPoint* getHalleyEntryStatic() { Halley::InitEntities<T>(); static HalleyEntryPoint<T> entry; return &entry; }
+	#define HalleyGame(T) Halley::IHalleyEntryPoint* getHalleyEntryStatic() { Halley::InitEntities<T>(); static Halley::HalleyEntryPoint<T> entry; return &entry; }
 #endif

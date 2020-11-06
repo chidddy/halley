@@ -590,13 +590,13 @@ function(halleyProjectServer name sources headers srv_sources srv_headers genDef
 		add_dependencies(${name}-srv-dll ${name}-srv-game)
 		add_dependencies(${name}-srv ${name}-srv-game)
 
-		target_compile_definitions(${name}-game PUBLIC HALLEY_STATIC_LIBRARY)
-		target_compile_definitions(${name}-dll PUBLIC HALLEY_SHARED_LIBRARY)
-		target_compile_definitions(${name} PUBLIC HALLEY_EXECUTABLE)
+		target_compile_definitions(${name}-game PUBLIC HALLEY_STATIC_LIBRARY CLIENT)
+		target_compile_definitions(${name}-dll PUBLIC HALLEY_SHARED_LIBRARY CLIENT)
+		target_compile_definitions(${name} PUBLIC HALLEY_EXECUTABLE CLIENT)
 
-		target_compile_definitions(${name}-srv-game PUBLIC HALLEY_STATIC_LIBRARY)
-		target_compile_definitions(${name}-srv-dll PUBLIC HALLEY_SHARED_LIBRARY)
-		target_compile_definitions(${name}-srv PUBLIC HALLEY_EXECUTABLE)
+		target_compile_definitions(${name}-srv-game PUBLIC HALLEY_STATIC_LIBRARY SERVER)
+		target_compile_definitions(${name}-srv-dll PUBLIC HALLEY_SHARED_LIBRARY SERVER)
+		target_compile_definitions(${name}-srv PUBLIC HALLEY_EXECUTABLE SERVER)
 
 		# Setup default run paths for DLL
 		# Note that I'm using release halley-cmd for debug, as currently they have the same name
