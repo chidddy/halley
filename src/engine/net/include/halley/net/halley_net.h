@@ -7,6 +7,8 @@ namespace Halley {}
 #include <halley/net/connection/imessage_stream.h>
 #include <halley/net/connection/instability_simulator.h>
 #include <halley/net/connection/message_queue.h>
+#include <halley/net/connection/message_queue_tcp.h>
+#include <halley/net/connection/message_queue_udp.h>
 #include <halley/net/connection/network_message.h>
 #include <halley/net/connection/network_packet.h>
 #include <halley/net/connection/network_service.h>

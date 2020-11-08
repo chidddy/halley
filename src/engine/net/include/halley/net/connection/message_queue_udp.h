@@ -40,6 +40,8 @@ namespace Halley
 	public:
 		MessageQueueUDP(std::shared_ptr<ReliableConnection> connection);
 		~MessageQueueUDP();
+
+		bool isConnected() const override;
 		
 		void setChannel(int channel, ChannelSettings settings) override;
 

@@ -7,6 +7,11 @@ ChannelSettings::ChannelSettings(bool reliable, bool ordered, bool keepLastSent)
 	, keepLastSent(keepLastSent)
 {}
 
+bool MessageQueueUDP::isConnected() const
+{
+	return connection->getStatus() == ConnectionStatus::Connected;
+}
+
 void MessageQueueUDP::Channel::getReadyMessages(std::vector<std::unique_ptr<NetworkMessage>>& out)
 {
 	if (settings.ordered) {
