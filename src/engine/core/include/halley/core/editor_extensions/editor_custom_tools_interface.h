@@ -2,13 +2,23 @@
 
 #include "halley/text/halleystring.h"
 #include "halley/core/graphics/sprite/sprite.h"
+#include "halley/text/i18n.h"
 #include <vector>
 #include <memory>
 
 namespace Halley {
-    class UIWidget;
+    class UIFactory;
+	class UIWidget;
+    class Project;
     class Resources;
     class HalleyAPI;
+    class Path;
+
+	class IProject {
+    public:		
+        virtual ~IProject() = default;
+		virtual Path getAssetsSrcPath() const = 0;
+	};
 
     class IEditorCustomTools { 
     public:
@@ -33,12 +43,14 @@ namespace Halley {
             Resources& editorResources;
             Resources& gameResources;
             const HalleyAPI& api;
+        	IProject& project;
 
-            MakeToolArgs(UIFactory& factory, Resources& editorResources, Resources& gameResources, const HalleyAPI& api)
+            MakeToolArgs(UIFactory& factory, Resources& editorResources, Resources& gameResources, const HalleyAPI& api, IProject& project)
                 : factory(factory)
-        		, editorResources(editorResources)
-                , gameResources(gameResources)
+                , editorResources(editorResources)
+        		, gameResources(gameResources)
                 , api(api)
+        		, project(project)
             {}
         };
 

@@ -11,9 +11,8 @@ Entity::Entity()
 	, alive(true)
 	, serializable(true)
 	, reloaded(false)
-	, fromPrefab(false)
 {
-	
+
 }
 
 Entity::~Entity() = default;
@@ -27,13 +26,28 @@ void Entity::destroyComponents(ComponentDeleterTable& table)
 	liveComponents = 0;
 }
 
+void Entity::removeComponentById(World& world, int id)
+{
+	for (uint8_t i = 0; i < liveComponents; ++i) {
+		if (components[i].first == id) {
+			removeComponentAt(i);
+			markDirty(world);
+			return;
+		}
+	}
+}
+
 void Entity::addComponent(Component* component, int id)
 {
+	if (liveComponents == std::numeric_limits<decltype(liveComponents)>::max()) {
+		throw Exception("Too many components in Entity", HalleyExceptions::Entity);
+	}
+	
 	// Put it at the back of the list...
 	components.push_back(std::pair<int, Component*>(id, component));
 
 	// ...if there's dead components, swap with the first dead component...
-	if (liveComponents < int(components.size())) {
+	if (static_cast<size_t>(liveComponents) < components.size()) {
 		std::swap(components[liveComponents], components.back());
 	}
 
@@ -44,7 +58,7 @@ void Entity::addComponent(Component* component, int id)
 void Entity::removeComponentAt(int i)
 {
 	// Put it at the end of the list of living components... (guaranteed to swap with living component)
-	std::swap(components[i], components[size_t(liveComponents) - 1]);
+	std::swap(components[i], components[static_cast<size_t>(liveComponents) - 1]);
 
 	// ...then shrink that list, therefore moving it into dead component territory
 	--liveComponents;
@@ -65,7 +79,7 @@ void Entity::deleteComponent(Component* component, int id, ComponentDeleterTable
 
 void Entity::keepOnlyComponentsWithIds(const std::vector<int>& ids, World& world)
 {
-	for (int i = 0; i < liveComponents; ++i) {
+	for (uint8_t i = 0; i < liveComponents; ++i) {
 		if (std::find(ids.begin(), ids.end(), components[i].first) == ids.end()) {
 			std::swap(components[i], components[liveComponents - 1]);
 			--liveComponents;
@@ -95,6 +109,7 @@ ComponentDeleterTable& Entity::getComponentDeleterTable(World& world)
 
 void Entity::setParent(Entity* newParent, bool propagate, size_t childIdx)
 {
+	Expects(newParent != this);
 	Expects(isAlive());
 	
 	if (parent != newParent) {
@@ -186,7 +201,7 @@ void Entity::refresh(MaskStorage& storage, ComponentDeleterTable& table)
 		dirty = false;
 
 		// Delete stale components
-		for (int i = liveComponents; i < int(components.size()); ++i) {
+		for (size_t i = liveComponents; i < components.size(); ++i) {
 			deleteComponent(components[i].second, components[i].first, table);
 		}
 		components.resize(liveComponents);
@@ -263,6 +278,11 @@ void Entity::setWorldPartition(uint8_t partition)
 	for (auto& c: children) {
 		c->setWorldPartition(partition);
 	}
+}
+
+bool Entity::isEmpty() const
+{
+	return liveComponents == 0 && children.empty();
 }
 
 void Entity::doDestroy(bool updateParenting)

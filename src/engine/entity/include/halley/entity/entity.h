@@ -15,6 +15,7 @@ namespace Halley {
 	class World;
 	class System;
 	class EntityRef;
+	class Prefab;
 
 	// True if T::onAddedToEntity(EntityRef&) exists
 	template <class, class = void_t<>> struct HasOnAddedToEntityMember : std::false_type {};
@@ -48,7 +49,7 @@ namespace Halley {
 		T* tryGetComponent()
 		{
 			constexpr int id = FamilyMask::RetrieveComponentIndex<T>::componentIndex;
-			for (int i = 0; i < liveComponents; i++) {
+			for (uint8_t i = 0; i < liveComponents; i++) {
 				if (components[i].first == id) {
 					return static_cast<T*>(components[i].second);
 				}
@@ -60,7 +61,7 @@ namespace Halley {
 		const T* tryGetComponent() const
 		{
 			constexpr int id = FamilyMask::RetrieveComponentIndex<T>::componentIndex;
-			for (int i = 0; i < liveComponents; i++) {
+			for (uint8_t i = 0; i < liveComponents; i++) {
 				if (components[i].first == id) {
 					return static_cast<const T*>(components[i].second);
 				}
@@ -109,11 +110,6 @@ namespace Halley {
 		{
 			return alive;
 		}
-
-		bool isFromPrefab() const
-		{
-			return fromPrefab;
-		}
 		
 		const UUID& getPrefabUUID() const
 		{
@@ -135,28 +131,39 @@ namespace Halley {
 
 		void setWorldPartition(uint8_t partition);
 
+		bool isEmpty() const;
+
 	private:
-		// Start with these for better cache coherence
+		// !!! WARNING !!!
+		// The order of elements in this class was carefully chosen to maximise cache performance!
+		// Be SURE to verify that no performance-critical fields get bumped to a worse cacheline if you change anything here
+
+		// Cacheline 0
 		Vector<std::pair<int, Component*>> components;
-		int liveComponents = 0;
+		uint8_t liveComponents = 0;
 		bool dirty : 1;
 		bool alive : 1;
 		bool serializable : 1;
 		bool reloaded : 1;
-		bool fromPrefab : 1;
 		
-		uint8_t hierarchyRevision = 0;
 		uint8_t childrenRevision = 0;
 		uint8_t worldPartition = 0;
-		Entity* parent = nullptr;
-		Vector<Entity*> children;
-		
-		Vector<MessageEntry> inbox;
+
 		FamilyMaskType mask;
+		Entity* parent = nullptr;
 		EntityId entityId;
+		Vector<Entity*> children; // Cacheline 1 starts 16 bytes into this
+
+		// Cacheline 1
+		Vector<MessageEntry> inbox;
 		String name;
+
+		// Cacheline 2
 		UUID instanceUUID;
 		UUID prefabUUID;
+		std::shared_ptr<const Prefab> prefab;
+
+		uint8_t hierarchyRevision = 0;
 
 		Entity();
 		void destroyComponents(ComponentDeleterTable& storage);
@@ -174,20 +181,13 @@ namespace Halley {
 		template <typename T>
 		Entity& removeComponent(World& world)
 		{
-			constexpr int id = T::componentIndex;
-			for (int i = 0; i < liveComponents; ++i) {
-				if (components[i].first == id) {
-					removeComponentAt(i);
-					markDirty(world);
-					return *this;
-				}
-			}
-
+			removeComponentById(world, T::componentIndex);
 			return *this;
 		}
 
 		void addComponent(Component* component, int id);
 		void removeComponentAt(int index);
+		void removeComponentById(World& world, int id);
 		void removeAllComponents(World& world);
 		void deleteComponent(Component* component, int id, ComponentDeleterTable& table);
 		void keepOnlyComponentsWithIds(const std::vector<int>& ids, World& world);
@@ -307,13 +307,23 @@ namespace Halley {
 		EntityRef& removeComponent()
 		{
 			Expects(entity != nullptr);
+			Expects(world != nullptr);
 			entity->removeComponent<T>(*world);
+			return *this;
+		}
+
+		EntityRef& removeComponentById(int id)
+		{
+			Expects(entity != nullptr);
+			Expects(world != nullptr);
+			entity->removeComponentById(*world, id);
 			return *this;
 		}
 
 		EntityRef& removeAllComponents()
 		{
 			Expects(entity != nullptr);
+			Expects(world != nullptr);
 			entity->removeAllComponents(*world);
 			return *this;
 		}
@@ -511,7 +521,7 @@ namespace Halley {
 		size_t getNumComponents() const
 		{
 			Expects(entity);
-			return size_t(entity->liveComponents);
+			return static_cast<size_t>(entity->liveComponents);
 		}
 
 		std::pair<int, Component*> getRawComponent(size_t idx) const
@@ -553,16 +563,29 @@ namespace Halley {
 			return entity->reloaded;
 		}
 
-		bool isFromPrefab()
-		{
-			Expects(entity);
-			return entity->isFromPrefab();
-		}
-
 		void sortChildrenByPrefabUUIDs(const std::vector<UUID>& uuids)
 		{
 			Expects(entity);
 			entity->sortChildrenByPrefabUUIDs(uuids);
+		}
+
+		void setPrefab(std::shared_ptr<const Prefab> prefab, UUID prefabUUID)
+		{
+			Expects(entity);
+			Expects(!prefab || prefabUUID.isValid());
+			entity->prefab = std::move(prefab);
+			entity->prefabUUID = prefabUUID;
+		}
+
+		const std::shared_ptr<const Prefab>& getPrefab() const
+		{
+			Expects(entity);
+			return entity->prefab;
+		}
+
+		bool isEmpty() const
+		{
+			return !entity || entity->isEmpty();
 		}
 
 	private:

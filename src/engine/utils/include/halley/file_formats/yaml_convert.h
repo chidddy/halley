@@ -1,6 +1,8 @@
 #pragma once
 
 #include <gsl/gsl>
+
+#include "halley/core/editor_extensions/editor_custom_tools_interface.h"
 #include "halley/file_formats/config_file.h"
 
 namespace YAML {
@@ -9,6 +11,8 @@ namespace YAML {
 }
 
 namespace Halley {
+	class Path;
+
 	class YAMLConvert {
 	public:
 		class EmitOptions {
@@ -30,4 +34,5 @@ namespace Halley {
 		static void emitMap(const ConfigNode& node, YAML::Emitter& emitter, const EmitOptions& options);
 		static bool isCompactSequence(const ConfigNode& node, int depth);
 	};
+
 }

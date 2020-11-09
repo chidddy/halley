@@ -15,10 +15,10 @@ PrefabSceneData::PrefabSceneData(Prefab& prefab, std::shared_ptr<EntityFactory> 
 {
 }
 
-ISceneData::EntityData PrefabSceneData::getEntityData(const String& id)
+ISceneData::EntityNodeData PrefabSceneData::getEntityNodeData(const String& id)
 {
 	if (id.isEmpty()) {
-		return EntityData(prefab.getRoot(), "");
+		return EntityNodeData(prefab.getRoot(), "");
 	}
 	
 	const auto& [data, parentData] = findEntityAndParent(prefab.getRoot(), nullptr, id);
@@ -30,7 +30,7 @@ ISceneData::EntityData PrefabSceneData::getEntityData(const String& id)
 	if (parentData) {
 		parentId = (*parentData)["uuid"].asString();
 	}
-	return EntityData(*data, parentId);
+	return EntityNodeData(*data, parentId);
 }
 
 void PrefabSceneData::reloadEntity(const String& id)
@@ -47,7 +47,7 @@ void PrefabSceneData::reloadEntity(const String& id, ConfigNode* data)
 	if (entity) {
 		if (data) {
 			// Update
-			factory->updateEntityTree(*entity, *data, EntitySerialization::Type::Prefab);
+			factory->updateEntity(*entity, EntityData(*data, false));
 		} else {
 			// Destroy
 			world.destroyEntity(entity.value());
@@ -55,7 +55,7 @@ void PrefabSceneData::reloadEntity(const String& id, ConfigNode* data)
 	} else {
 		if (data) {
 			// Create
-			factory->createEntity(*data, EntitySerialization::Type::Prefab);
+			factory->createEntity(EntityData(*data, false));
 		}
 	}
 }

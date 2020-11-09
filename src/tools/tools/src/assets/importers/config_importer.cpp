@@ -1,6 +1,8 @@
 #include "config_importer.h"
+
+#include "halley/entity/prefab.h"
 #include "halley/file_formats/config_file.h"
-#include "halley/tools/yaml/yaml_convert.h"
+#include "halley/file_formats/yaml_convert.h"
 
 using namespace Halley;
 

@@ -54,7 +54,11 @@ namespace Halley
 		Sprite& setMaterial(std::unique_ptr<Material> m);
 		Material& getMutableMaterial();
 		std::shared_ptr<Material> getMutableMaterialPtr();
-		const Material& getMaterial() const { return *material; }
+		const Material& getMaterial() const
+		{
+			Expects(material);
+			return *material;
+		}
 		bool hasMaterial() const { return material != nullptr; }
 
 		Sprite& setImage(Resources& resources, const String& imageName, String materialName = "");
@@ -138,6 +142,9 @@ namespace Halley
 
 		Sprite clone() const;
 
+		bool operator==(const Sprite& other) const;
+		bool operator!=(const Sprite& other) const;
+
 	private:
 		SpriteVertexAttrib vertexAttrib;
 		std::shared_ptr<Material> material;
@@ -190,7 +197,7 @@ namespace Halley
 	template<>
 	class ConfigNodeSerializer<Sprite> {
 	public:
-		ConfigNode serialize(const Sprite& sprite, ConfigNodeSerializationContext& context);
-		Sprite deserialize(ConfigNodeSerializationContext& context, const ConfigNode& node);
+		ConfigNode serialize(const Sprite& sprite, const ConfigNodeSerializationContext& context);
+		Sprite deserialize(const ConfigNodeSerializationContext& context, const ConfigNode& node);
 	};
 }
