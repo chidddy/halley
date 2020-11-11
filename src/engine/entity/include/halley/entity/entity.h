@@ -129,8 +129,6 @@ namespace Halley {
 		
 		void sortChildrenByPrefabUUIDs(const std::vector<UUID>& uuids);
 
-		void setWorldPartition(uint8_t partition);
-
 		bool isEmpty() const;
 
 	private:
@@ -389,10 +387,12 @@ namespace Halley {
 			return entity->name;
 		}
 
-		void setName(String name)
+		void setName(const String& name)
 		{
 			Expects(entity != nullptr);
-			entity->name = std::move(name);
+			if (entity->name != name) {
+				entity->name = std::move(name);
+			}
 		}
 
 		const UUID& getInstanceUUID() const
@@ -490,12 +490,6 @@ namespace Halley {
 		{
 			Expects(entity != nullptr);
 			return entity->worldPartition;
-		}
-
-		void setWorldPartition(uint8_t partition)
-		{
-			Expects(entity != nullptr);
-			entity->setWorldPartition(partition);
 		}
 
 		bool isValid() const

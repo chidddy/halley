@@ -1,8 +1,9 @@
 #pragma once
 
 #include "halley/file_formats/config_file.h"
+#include "entity_data_delta.h"
 
-namespace Halley {
+namespace Halley {	
 	class Prefab : public ConfigFile {
 	public:
 		static std::unique_ptr<Prefab> loadResource(ResourceLoader& loader);
@@ -11,12 +12,30 @@ namespace Halley {
 		void reload(Resource&& resource) override;
 		void makeDefault();
 
+		virtual bool isScene() const;
+
 		const EntityData& getEntityData() const;
 		const std::vector<EntityData>& getEntityDatas() const;
+		std::map<UUID, const EntityData*> getEntityDataMap() const;
+
+		const std::map<UUID, EntityDataDelta>& getEntitiesModified() const;
+		const std::set<UUID>& getEntitiesAdded() const;
+		const std::set<UUID>& getEntitiesRemoved() const;
 
 	protected:
-		virtual void loadEntityData();
+		struct Deltas {
+			std::map<UUID, EntityDataDelta> entitiesModified;
+			std::set<UUID> entitiesAdded;
+			std::set<UUID> entitiesRemoved;
+		};
+
+		void loadEntityData();
+		virtual std::vector<EntityData> makeEntityDatas() const;
+		Deltas generatePrefabDeltas(const Prefab& newPrefab) const;
+		
 		std::vector<EntityData> entityDatas;
+
+		Deltas deltas;
 	};
 
 	class Scene final : public Prefab {
@@ -24,10 +43,13 @@ namespace Halley {
 		static std::unique_ptr<Scene> loadResource(ResourceLoader& loader);
 		constexpr static AssetType getAssetType() { return AssetType::Scene; }
 
+		bool isScene() const override;
+		
 		void reload(Resource&& resource) override;
 		void makeDefault();
 
 	protected:
-		void loadEntityData() override;
+		std::vector<EntityData> makeEntityDatas() const override;
+		Deltas generateSceneDeltas(const Scene& newScene) const;
 	};
 }

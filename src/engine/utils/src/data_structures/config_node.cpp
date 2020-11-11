@@ -140,7 +140,7 @@ ConfigNode& ConfigNode::operator=(ConfigNode&& other) noexcept
 	floatData = other.floatData;
 	vec2iData = other.vec2iData;
 	vec2fData = other.vec2fData;
-	parent = std::move(parent);
+	parent = std::move(other.parent);
 	auxData = other.auxData;
 	
 	other.type = ConfigNodeType::Undefined;
@@ -480,6 +480,28 @@ Vector2f ConfigNode::asVector2f() const
 		return Vector2f(seq.at(0).asFloat(), seq.at(1).asFloat());
 	} else {
 		throw Exception(getNodeDebugId() + " is not a vector2 type", HalleyExceptions::Resources);
+	}
+}
+
+Vector3i ConfigNode::asVector3i() const
+{
+	if (type == ConfigNodeType::Sequence) {
+		auto& seq = asSequence();
+		return Vector3i(seq.at(0).asInt(), seq.at(1).asInt(), seq.at(2).asInt());
+	}
+	else {
+		throw Exception(getNodeDebugId() + " is not a vector3 type", HalleyExceptions::Resources);
+	}
+}
+
+Vector3f ConfigNode::asVector3f() const
+{
+	if (type == ConfigNodeType::Sequence) {
+		auto& seq = asSequence();
+		return Vector3f(seq.at(0).asFloat(), seq.at(1).asFloat(), seq.at(2).asFloat());
+	}
+	else {
+		throw Exception(getNodeDebugId() + " is not a vector3 type", HalleyExceptions::Resources);
 	}
 }
 
@@ -903,6 +925,16 @@ Vector2f ConfigNode::convertTo(Tag<Vector2f> tag) const
 	return asVector2f();
 }
 
+Vector3i ConfigNode::convertTo(Tag<Vector3i> tag) const
+{
+	return asVector3i();
+}
+
+Vector3f ConfigNode::convertTo(Tag<Vector3f> tag) const
+{
+	return asVector3f();
+}
+
 Vector4i ConfigNode::convertTo(Tag<Vector4i> tag) const
 {
 	return asVector4i();
@@ -1027,6 +1059,9 @@ ConfigNode ConfigNode::createMapDelta(const ConfigNode& from, const ConfigNode& 
 
 	// Shortcut if from is empty
 	if (fromMap.empty()) {
+		if (toMap.empty()) {
+			return ConfigNode(NoopType());
+		}
 		auto result = ConfigNode(toMap);
 		result.type = ConfigNodeType::DeltaMap;
 		return result;
@@ -1097,6 +1132,13 @@ ConfigNode ConfigNode::createSequenceDelta(const ConfigNode& from, const ConfigN
 	const auto& fromSeq = from.asSequence();
 	const auto& toSeq = to.asSequence();
 	auto& resultSeq = result.asSequence();
+
+	if (fromSeq == toSeq) {
+		return ConfigNode(NoopType());
+	}
+	if (!hints) {
+		return ConfigNode(to);
+	}
 
 	bool hasNewData = false;
 	size_t refCount = 0;

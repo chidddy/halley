@@ -1,4 +1,6 @@
 #include "prefab.h"
+
+#include "entity_data_delta.h"
 #include "halley/resources/resource_data.h"
 
 using namespace Halley;
@@ -19,7 +21,10 @@ std::unique_ptr<Prefab> Prefab::loadResource(ResourceLoader& loader)
 
 void Prefab::reload(Resource&& resource)
 {
-	*this = std::move(dynamic_cast<Prefab&>(resource));
+	auto& prefab = dynamic_cast<Prefab&>(resource);
+	auto newDeltas = generatePrefabDeltas(prefab);
+	*this = std::move(prefab);
+	deltas = std::move(newDeltas);
 	updateRoot();
 }
 
@@ -27,6 +32,11 @@ void Prefab::makeDefault()
 {
 	getRoot() = ConfigNode(ConfigNode::MapType());
 	loadEntityData();
+}
+
+bool Prefab::isScene() const
+{
+	return false;
 }
 
 const EntityData& Prefab::getEntityData() const
@@ -42,10 +52,47 @@ const std::vector<EntityData>& Prefab::getEntityDatas() const
 	return entityDatas;
 }
 
+std::map<UUID, const EntityData*> Prefab::getEntityDataMap() const
+{
+	std::map<UUID, const EntityData*> dataMap;
+	for (const auto& data: entityDatas) {
+		dataMap[data.getInstanceUUID()] = &data;
+	}
+	return dataMap;
+}
+
+const std::map<UUID, EntityDataDelta>& Prefab::getEntitiesModified() const
+{
+	return deltas.entitiesModified;
+}
+
+const std::set<UUID>& Prefab::getEntitiesAdded() const
+{
+	return deltas.entitiesAdded;
+}
+
+const std::set<UUID>& Prefab::getEntitiesRemoved() const
+{
+	return deltas.entitiesRemoved;
+}
+
 void Prefab::loadEntityData()
 {
-	entityDatas.clear();
-	entityDatas.emplace_back(getRoot(), true);
+	entityDatas = makeEntityDatas();
+}
+
+std::vector<EntityData> Prefab::makeEntityDatas() const
+{
+	std::vector<EntityData> result;
+	result.emplace_back(getRoot(), true);
+	return result;
+}
+
+Prefab::Deltas Prefab::generatePrefabDeltas(const Prefab& newPrefab) const
+{
+	Deltas result;
+	result.entitiesModified[entityDatas.at(0).getPrefabUUID()] = EntityDataDelta(entityDatas.at(0), newPrefab.entityDatas.at(0));
+	return result;
 }
 
 std::unique_ptr<Scene> Scene::loadResource(ResourceLoader& loader)
@@ -62,23 +109,68 @@ std::unique_ptr<Scene> Scene::loadResource(ResourceLoader& loader)
 	return scene;
 }
 
+bool Scene::isScene() const
+{
+	return true;
+}
+
 void Scene::reload(Resource&& resource)
 {
-	*this = std::move(dynamic_cast<Scene&>(resource));
+	auto& scene = dynamic_cast<Scene&>(resource);
+	auto newDeltas = generateSceneDeltas(scene);
+	*this = std::move(scene);
+	deltas = std::move(newDeltas);
 	updateRoot();
 }
 
 void Scene::makeDefault()
 {
 	getRoot() = ConfigNode(ConfigNode::SequenceType());
+	loadEntityData();
 }
 
-void Scene::loadEntityData()
+std::vector<EntityData> Scene::makeEntityDatas() const
 {
 	const auto& seq = root.asSequence();
-	entityDatas.clear();
-	entityDatas.reserve(seq.size());
+	std::vector<EntityData> result;
+	result.reserve(seq.size());
 	for (const auto& s: seq) {
-		entityDatas.emplace_back(s, false);
+		result.emplace_back(s, false);
 	}
+	return result;
+}
+
+Scene::Deltas Scene::generateSceneDeltas(const Scene& newScene) const
+{
+	Deltas result;
+	
+	// Move old entity data
+	std::map<UUID, const EntityData*> oldDatas;
+	for (const auto& data: entityDatas) {
+		oldDatas[data.getInstanceUUID()] = &data;
+	}
+
+	// Modified
+	for (const auto& data: newScene.entityDatas) {
+		const auto uuid = data.getInstanceUUID();
+		const auto oldIter = oldDatas.find(uuid);
+		if (oldIter != oldDatas.end()) {
+			// Update
+			auto delta = EntityDataDelta(*oldIter->second, data);
+			if (delta.hasChange()) {
+				result.entitiesModified[uuid] = std::move(delta);
+			}
+			oldDatas.erase(uuid);
+		} else {
+			// Added
+			result.entitiesAdded.insert(uuid);
+		}
+	}
+
+	// Removed
+	for (const auto& old: oldDatas) {
+		result.entitiesRemoved.insert(old.first);
+	}
+
+	return result;
 }
