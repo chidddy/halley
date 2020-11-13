@@ -119,6 +119,9 @@ set(USE_WINRT 0)
 set(USE_MEDIA_FOUNDATION 0)
 set(USE_AVFOUNDATION 0)
 set(USE_ANDROID 0)
+set(USE_SOCI 1)
+
+
 
 if (EMSCRIPTEN)
 	set(USE_SDL2 0)
@@ -159,6 +162,12 @@ endif ()
 # Libs
 if (CMAKE_LIBRARY_PATH)
 	link_directories(${CMAKE_LIBRARY_PATH})
+endif()
+
+# SOCI
+if (USE_SOCI)
+	add_definitions(-DWITH_SOCI)
+	find_Package(SOCI CONFIG REQUIRED)
 endif()
 
 # SDL2
@@ -280,6 +289,7 @@ set(CMAKE_DEBUG_POSTFIX "_d")
 
 set(HALLEY_PROJECT_EXTERNAL_LIBS
 	${SDL2_LIBRARIES}
+	${SOCI_LIBRARIES}
 	${OPENGL_LIBRARIES}
 	${X11_LIBRARIES}
 	${EXTRA_LIBS}
@@ -296,7 +306,8 @@ set(HALLEY_PROJECT_INCLUDE_DIRS
 	${HALLEY_PATH}/src/engine/audio/include
 	${HALLEY_PATH}/src/engine/lua/include
 	${HALLEY_PATH}/src/engine/ui/include
-	${Boost_INCLUDE_DIR} 
+	${Boost_INCLUDE_DIR}
+	${SOCI_INCLUDE_DIR}
 	)
 
 set(HALLEY_PROJECT_LIBS
@@ -655,6 +666,9 @@ function(halleyProjectServer name sources headers srv_sources srv_headers genDef
 		endif ()
 		if (USE_METAL)
 			SET(LINK_LIBRARIES ${LINK_LIBRARIES} halley-metal)
+		endif()
+		if (USE_SOCI)
+			SET(LINK_LIBRARIES ${LINK_LIBRARIES} SOCI::soci_core SOCI::soci_empty SOCI::soci_odbc SOCI::soci_postgresql SOCI::soci_sqlite3)
 		endif()
 	else ()
 		SET(LINK_LIBRARIES ${LINK_LIBRARIES} ${HALLEY_PROJECT_LIBS})
