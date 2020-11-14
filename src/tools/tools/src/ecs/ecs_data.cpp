@@ -9,9 +9,13 @@ using namespace Halley;
 void ECSData::loadSources(std::vector<CodegenSourceInfo> files)
 {
 	++revision;
-	for (auto& f : files) {
-		addSource(f);
-	}
+    std::sort( files.begin(), files.end(), []( CodegenSourceInfo a, CodegenSourceInfo b ) -> bool {
+        return a.filename.cppStr() < b.filename.cppStr();
+    } );
+    for ( auto& f : files )
+    {
+        addSource( f );
+    }
 
 	validate();
 	process();
