@@ -90,10 +90,13 @@ namespace Halley
         explicit ConfigNode( bool value );
         explicit ConfigNode( int value );
         explicit ConfigNode( float value );
+        explicit ConfigNode( Angle1f value );
         explicit ConfigNode( Vector2i value );
         explicit ConfigNode( Vector2f value );
         explicit ConfigNode( Vector3i value );
         explicit ConfigNode( Vector3f value );
+        explicit ConfigNode( Vector4i value );
+        explicit ConfigNode( Vector4f value );
         explicit ConfigNode( Bytes value );
         explicit ConfigNode( NoopType value );
         explicit ConfigNode( DelType value );
@@ -118,10 +121,13 @@ namespace Halley
         ConfigNode& operator=( bool value );
         ConfigNode& operator=( int value );
         ConfigNode& operator=( float value );
+        ConfigNode& operator=( Angle1f value );
         ConfigNode& operator=( Vector2i value );
         ConfigNode& operator=( Vector2f value );
         ConfigNode& operator=( Vector3i value );
         ConfigNode& operator=( Vector3f value );
+        ConfigNode& operator=( Vector4i value );
+        ConfigNode& operator=( Vector4f value );
 
         ConfigNode& operator=( MapType entryMap );
         ConfigNode& operator=( SequenceType entryList );
@@ -158,6 +164,7 @@ namespace Halley
         int asInt() const;
         float asFloat() const;
         bool asBool() const;
+        Angle1f asAngle1f() const;
         Vector2i asVector2i() const;
         Vector2f asVector2f() const;
         Vector3i asVector3i() const;
@@ -172,10 +179,13 @@ namespace Halley
         float asFloat( float defaultValue ) const;
         bool asBool( bool defaultValue ) const;
         String asString( const String& defaultValue ) const;
+        Angle1f asAngle1f( Angle1f defaultValue ) const;
         Vector2i asVector2i( Vector2i defaultValue ) const;
         Vector2f asVector2f( Vector2f defaultValue ) const;
         Vector3i asVector3i( Vector3i defaultValue ) const;
         Vector3f asVector3f( Vector3f defaultValue ) const;
+        Vector4i asVector4i( Vector4i defaultValue ) const;
+        Vector4f asVector4f( Vector4f defaultValue ) const;
 
         template < typename T >
         std::vector< T > asVector() const
@@ -291,10 +301,13 @@ namespace Halley
             void* rawPtrData;
             int intData;
             float floatData;
+            Angle1f ang1fData;
             Vector2i vec2iData;
             Vector2f vec2fData;
             Vector3i vec3iData;
             Vector3f vec3fData;
+            Vector4i vec4iData;
+            Vector4f vec4fData;
         };
         ConfigNodeType type = ConfigNodeType::Undefined;
         int auxData = 0; // Used by delta coding
@@ -326,6 +339,7 @@ namespace Halley
         int convertTo( Tag< int > tag ) const;
         float convertTo( Tag< float > tag ) const;
         bool convertTo( Tag< bool > tag ) const;
+        Angle1f convertTo( Tag< Angle1f > tag ) const;
         Vector2i convertTo( Tag< Vector2i > tag ) const;
         Vector2f convertTo( Tag< Vector2f > tag ) const;
         Vector3i convertTo( Tag< Vector3i > tag ) const;

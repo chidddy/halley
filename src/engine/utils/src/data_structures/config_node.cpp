@@ -91,6 +91,11 @@ ConfigNode::ConfigNode( float value )
     operator=( value );
 }
 
+ConfigNode::ConfigNode( Angle1f value )
+{
+    operator=( value );
+}
+
 ConfigNode::ConfigNode( Vector2i value )
 {
     operator=( value );
@@ -107,6 +112,16 @@ ConfigNode::ConfigNode( Vector3i value )
 }
 
 ConfigNode::ConfigNode( Vector3f value )
+{
+    operator=( value );
+}
+
+ConfigNode::ConfigNode( Vector4i value )
+{
+    operator=( value );
+}
+
+ConfigNode::ConfigNode( Vector4f value )
 {
     operator=( value );
 }
@@ -184,6 +199,14 @@ ConfigNode& ConfigNode::operator=( float value )
     return *this;
 }
 
+ConfigNode& ConfigNode::operator=( Angle1f value )
+{
+    reset();
+    type = ConfigNodeType::Float;
+    ang1fData = value;
+    return *this;
+}
+
 ConfigNode& ConfigNode::operator=( Vector2i value )
 {
     reset();
@@ -213,6 +236,22 @@ ConfigNode& ConfigNode::operator=( Vector3f value )
     reset();
     type = ConfigNodeType::Float2;
     vec3fData = value;
+    return *this;
+}
+
+ConfigNode& ConfigNode::operator=( Vector4i value )
+{
+    reset();
+    type = ConfigNodeType::Int2;
+    vec4iData = value;
+    return *this;
+}
+
+ConfigNode& ConfigNode::operator=( Vector4f value )
+{
+    reset();
+    type = ConfigNodeType::Float2;
+    vec4fData = value;
     return *this;
 }
 
@@ -511,6 +550,26 @@ bool ConfigNode::asBool() const
     }
 }
 
+Angle1f ConfigNode::asAngle1f() const
+{
+    if ( type == ConfigNodeType::Int )
+    {
+        return Angle1f( float( intData ) );
+    }
+    else if ( type == ConfigNodeType::Float )
+    {
+        return Angle1f( floatData );
+    }
+    else if ( type == ConfigNodeType::String )
+    {
+        return Angle1f( asString().toFloat() );
+    }
+    else
+    {
+        throw Exception( getNodeDebugId() + " cannot be converted to Angle1f.", HalleyExceptions::Resources );
+    }
+}
+
 Vector2i ConfigNode::asVector2i() const
 {
     if ( type == ConfigNodeType::Int2 || type == ConfigNodeType::Idx )
@@ -638,6 +697,18 @@ const Bytes& ConfigNode::asBytes() const
     }
 }
 
+Angle1f ConfigNode::asAngle1f( Angle1f defaultValue ) const
+{
+    if ( type == ConfigNodeType::Undefined )
+    {
+        return defaultValue;
+    }
+    else
+    {
+        return asAngle1f();
+    }
+}
+
 Vector2i ConfigNode::asVector2i( Vector2i defaultValue ) const
 {
     if ( type == ConfigNodeType::Undefined )
@@ -683,6 +754,30 @@ Vector3f ConfigNode::asVector3f( Vector3f defaultValue ) const
     else
     {
         return asVector3f();
+    }
+}
+
+Vector4i ConfigNode::asVector4i( Vector4i defaultValue ) const
+{
+    if ( type == ConfigNodeType::Undefined )
+    {
+        return defaultValue;
+    }
+    else
+    {
+        return asVector4i();
+    }
+}
+
+Vector4f ConfigNode::asVector4f( Vector4f defaultValue ) const
+{
+    if ( type == ConfigNodeType::Undefined )
+    {
+        return defaultValue;
+    }
+    else
+    {
+        return asVector4f();
     }
 }
 
@@ -1115,6 +1210,11 @@ float ConfigNode::convertTo( Tag< float > tag ) const
 bool ConfigNode::convertTo( Tag< bool > tag ) const
 {
     return asBool();
+}
+
+Angle1f ConfigNode::convertTo( Tag< Angle1f > tag ) const
+{
+    return asAngle1f();
 }
 
 Vector2i ConfigNode::convertTo( Tag< Vector2i > tag ) const
