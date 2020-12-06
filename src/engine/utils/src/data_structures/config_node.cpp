@@ -33,8 +33,20 @@ ConfigNode::ConfigNode( const ConfigNode& other )
     case ConfigNodeType::Idx:
         *this = other.asVector2i();
         break;
+    case ConfigNodeType::Int3:
+        *this = other.asVector3i();
+        break;
+    case ConfigNodeType::Int4:
+        *this = other.asVector4i();
+        break;
     case ConfigNodeType::Float2:
         *this = other.asVector2f();
+        break;
+    case ConfigNodeType::Float3:
+        *this = other.asVector3f();
+        break;
+    case ConfigNodeType::Float4:
+        *this = other.asVector4f();
         break;
     case ConfigNodeType::Bytes:
         *this = other.asBytes();
@@ -226,7 +238,7 @@ ConfigNode& ConfigNode::operator=( Vector2f value )
 ConfigNode& ConfigNode::operator=( Vector3i value )
 {
     reset();
-    type = ConfigNodeType::Int2;
+    type = ConfigNodeType::Int3;
     vec3iData = value;
     return *this;
 }
@@ -234,7 +246,7 @@ ConfigNode& ConfigNode::operator=( Vector3i value )
 ConfigNode& ConfigNode::operator=( Vector3f value )
 {
     reset();
-    type = ConfigNodeType::Float2;
+    type = ConfigNodeType::Float3;
     vec3fData = value;
     return *this;
 }
@@ -242,7 +254,7 @@ ConfigNode& ConfigNode::operator=( Vector3f value )
 ConfigNode& ConfigNode::operator=( Vector4i value )
 {
     reset();
-    type = ConfigNodeType::Int2;
+    type = ConfigNodeType::Int4;
     vec4iData = value;
     return *this;
 }
@@ -250,7 +262,7 @@ ConfigNode& ConfigNode::operator=( Vector4i value )
 ConfigNode& ConfigNode::operator=( Vector4f value )
 {
     reset();
-    type = ConfigNodeType::Float2;
+    type = ConfigNodeType::Float4;
     vec4fData = value;
     return *this;
 }
@@ -283,8 +295,16 @@ bool ConfigNode::operator==( const ConfigNode& other ) const
     case ConfigNodeType::Int2:
     case ConfigNodeType::Idx:
         return asVector2i() == other.asVector2i();
+    case ConfigNodeType::Int3:
+        return asVector3i() == other.asVector3i();
+    case ConfigNodeType::Int4:
+        return asVector4i() == other.asVector4i();
     case ConfigNodeType::Float2:
         return asVector2f() == other.asVector2f();
+    case ConfigNodeType::Float3:
+        return asVector3f() == other.asVector3f();
+    case ConfigNodeType::Float4:
+        return asVector4f() == other.asVector4f();
     case ConfigNodeType::Bytes:
         return asBytes() == other.asBytes();
     default:
@@ -391,8 +411,20 @@ void ConfigNode::serialize( Serializer& s ) const
     case ConfigNodeType::Idx:
         s << asVector2i();
         break;
+    case ConfigNodeType::Int3:
+        s << asVector3i();
+        break;
+    case ConfigNodeType::Int4:
+        s << asVector4i();
+        break;
     case ConfigNodeType::Float2:
         s << asVector2f();
+        break;
+    case ConfigNodeType::Float3:
+        s << asVector3f();
+        break;
+    case ConfigNodeType::Float4:
+        s << asVector4f();
         break;
     case ConfigNodeType::Bytes:
         s << asBytes();
@@ -456,8 +488,20 @@ void ConfigNode::deserialize( Deserializer& s )
     case ConfigNodeType::Idx:
         deserializeContents< Vector2i >( s );
         break;
+    case ConfigNodeType::Int3:
+        deserializeContents< Vector3i >( s );
+        break;
+    case ConfigNodeType::Int4:
+        deserializeContents< Vector4i >( s );
+        break;
     case ConfigNodeType::Float2:
         deserializeContents< Vector2f >( s );
+        break;
+    case ConfigNodeType::Float3:
+        deserializeContents< Vector3f >( s );
+        break;
+    case ConfigNodeType::Float4:
+        deserializeContents< Vector4f >( s );
         break;
     case ConfigNodeType::Bytes:
         deserializeContents< Bytes >( s );
@@ -614,7 +658,15 @@ Vector2f ConfigNode::asVector2f() const
 
 Vector3i ConfigNode::asVector3i() const
 {
-    if ( type == ConfigNodeType::Sequence )
+    if ( type == ConfigNodeType::Float3 )
+    {
+        return Vector3i( vec3fData );
+    }
+    else if ( type == ConfigNodeType::Int3 )
+    {
+        return vec3iData;
+    }
+    else if ( type == ConfigNodeType::Sequence )
     {
         auto& seq = asSequence();
         return Vector3i( seq.at( 0 ).asInt(), seq.at( 1 ).asInt(), seq.at( 2 ).asInt() );
@@ -627,7 +679,15 @@ Vector3i ConfigNode::asVector3i() const
 
 Vector3f ConfigNode::asVector3f() const
 {
-    if ( type == ConfigNodeType::Sequence )
+    if ( type == ConfigNodeType::Int3 )
+    {
+        return Vector3f( vec3iData );
+    }
+    else if ( type == ConfigNodeType::Float3 )
+    {
+        return vec3fData;
+    }
+    else if ( type == ConfigNodeType::Sequence )
     {
         auto& seq = asSequence();
         return Vector3f( seq.at( 0 ).asFloat(), seq.at( 1 ).asFloat(), seq.at( 2 ).asFloat() );
@@ -640,7 +700,15 @@ Vector3f ConfigNode::asVector3f() const
 
 Vector4i ConfigNode::asVector4i() const
 {
-    if ( type == ConfigNodeType::Sequence )
+    if ( type == ConfigNodeType::Float4 )
+    {
+        return Vector4i( vec4fData );
+    }
+    else if ( type == ConfigNodeType::Int4 )
+    {
+        return vec4iData;
+    }
+    else if ( type == ConfigNodeType::Sequence )
     {
         auto& seq = asSequence();
         return Vector4i( seq.at( 0 ).asInt(), seq.at( 1 ).asInt(), seq.at( 2 ).asInt(), seq.at( 3 ).asInt() );
@@ -653,7 +721,15 @@ Vector4i ConfigNode::asVector4i() const
 
 Vector4f ConfigNode::asVector4f() const
 {
-    if ( type == ConfigNodeType::Sequence )
+    if ( type == ConfigNodeType::Int4 )
+    {
+        return Vector4f( vec4iData );
+    }
+    else if ( type == ConfigNodeType::Float4 )
+    {
+        return vec4fData;
+    }
+    else if ( type == ConfigNodeType::Sequence )
     {
         auto& seq = asSequence();
         return Vector4f( seq.at( 0 ).asFloat(), seq.at( 1 ).asFloat(), seq.at( 2 ).asFloat(), seq.at( 3 ).asFloat() );
@@ -699,7 +775,7 @@ const Bytes& ConfigNode::asBytes() const
 
 Angle1f ConfigNode::asAngle1f( Angle1f defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -711,7 +787,7 @@ Angle1f ConfigNode::asAngle1f( Angle1f defaultValue ) const
 
 Vector2i ConfigNode::asVector2i( Vector2i defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -723,7 +799,7 @@ Vector2i ConfigNode::asVector2i( Vector2i defaultValue ) const
 
 Vector2f ConfigNode::asVector2f( Vector2f defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -735,7 +811,7 @@ Vector2f ConfigNode::asVector2f( Vector2f defaultValue ) const
 
 Vector3i ConfigNode::asVector3i( Vector3i defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -747,7 +823,7 @@ Vector3i ConfigNode::asVector3i( Vector3i defaultValue ) const
 
 Vector3f ConfigNode::asVector3f( Vector3f defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -759,7 +835,7 @@ Vector3f ConfigNode::asVector3f( Vector3f defaultValue ) const
 
 Vector4i ConfigNode::asVector4i( Vector4i defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -771,7 +847,7 @@ Vector4i ConfigNode::asVector4i( Vector4i defaultValue ) const
 
 Vector4f ConfigNode::asVector4f( Vector4f defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -833,7 +909,7 @@ String ConfigNode::asString() const
 
 int ConfigNode::asInt( int defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -845,7 +921,7 @@ int ConfigNode::asInt( int defaultValue ) const
 
 float ConfigNode::asFloat( float defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -857,7 +933,7 @@ float ConfigNode::asFloat( float defaultValue ) const
 
 bool ConfigNode::asBool( bool defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -869,7 +945,7 @@ bool ConfigNode::asBool( bool defaultValue ) const
 
 String ConfigNode::asString( const String& defaultValue ) const
 {
-    if ( type == ConfigNodeType::Undefined )
+    if ( type == ConfigNodeType::Undefined || type == ConfigNodeType::Del )
     {
         return defaultValue;
     }
@@ -939,11 +1015,23 @@ void ConfigNode::ensureType( ConfigNodeType t )
         case ConfigNodeType::Int2:
             *this = Vector2i();
             break;
+        case ConfigNodeType::Int3:
+            *this = Vector3i();
+            break;
+        case ConfigNodeType::Int4:
+            *this = Vector4i();
+            break;
         case ConfigNodeType::Float:
             *this = 0.0f;
             break;
         case ConfigNodeType::Float2:
             *this = Vector2f();
+            break;
+        case ConfigNodeType::Float3:
+            *this = Vector3f();
+            break;
+        case ConfigNodeType::Float4:
+            *this = Vector4f();
             break;
         case ConfigNodeType::Sequence:
             *this = SequenceType();
@@ -1127,10 +1215,34 @@ String ConfigNode::getNodeDebugId() const
         value = "Vector2i(" + toString( v.x ) + ", " + toString( v.y ) + ")";
     }
     break;
+    case ConfigNodeType::Int3:
+    {
+        auto v = asVector3i();
+        value = "Vector3i(" + toString( v.x ) + ", " + toString( v.y ) + "," + toString( v.z ) + ")";
+    }
+    break;
+    case ConfigNodeType::Int4:
+    {
+        auto v = asVector4i();
+        value = "Vector4i(" + toString( v.x ) + ", " + toString( v.y ) + "," + toString( v.z ) + "," + toString( v.w ) + ")";
+    }
+    break;
     case ConfigNodeType::Float2:
     {
         auto v = asVector2f();
         value = "Vector2f(" + toString( v.x ) + ", " + toString( v.y ) + ")";
+    }
+    break;
+    case ConfigNodeType::Float3:
+    {
+        auto v = asVector3f();
+        value = "Vector3f(" + toString( v.x ) + ", " + toString( v.y ) + "," + toString( v.z ) + ")";
+    }
+    break;
+    case ConfigNodeType::Float4:
+    {
+        auto v = asVector4f();
+        value = "Vector4f(" + toString( v.x ) + ", " + toString( v.y ) + "," + toString( v.z ) + "," + toString( v.w ) + ")";
     }
     break;
     case ConfigNodeType::Bytes:
@@ -1709,6 +1821,22 @@ bool ConfigNode::isEquivalentStrictOrder( const ConfigNode& other ) const
     if ( type == ConfigNodeType::Sequence && other.type == ConfigNodeType::Float2 && asSequence().size() >= 2 )
     {
         return asVector2f() == other.asVector2f();
+    }
+    if ( type == ConfigNodeType::Sequence && other.type == ConfigNodeType::Int3 && asSequence().size() >= 3 )
+    {
+        return asVector3i() == other.asVector3i();
+    }
+    if ( type == ConfigNodeType::Sequence && other.type == ConfigNodeType::Float3 && asSequence().size() >= 3 )
+    {
+        return asVector3f() == other.asVector3f();
+    }
+    if ( type == ConfigNodeType::Sequence && other.type == ConfigNodeType::Int4 && asSequence().size() >= 4 )
+    {
+        return asVector4i() == other.asVector4i();
+    }
+    if ( type == ConfigNodeType::Sequence && other.type == ConfigNodeType::Float4 && asSequence().size() >= 4 )
+    {
+        return asVector4f() == other.asVector4f();
     }
 
     return false;

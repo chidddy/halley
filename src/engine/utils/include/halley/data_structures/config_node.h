@@ -25,6 +25,10 @@ namespace Halley
         Float,
         Int2,
         Float2,
+        Int3,
+        Float3,
+        Int4,
+        Float4,
         Bytes,
         DeltaSequence, // For delta coding
         DeltaMap,      // For delta coding
@@ -36,7 +40,7 @@ namespace Halley
     template <>
     struct EnumNames< ConfigNodeType >
     {
-        constexpr std::array< const char*, 13 > operator()() const
+        constexpr std::array< const char*, 17 > operator()() const
         {
             return { { "undefined",
                 "string",
@@ -46,6 +50,10 @@ namespace Halley
                 "float",
                 "int2",
                 "float2",
+                "int3",
+                "float3",
+                "int4",
+                "float4",
                 "bytes",
                 "deltaSequence",
                 "deltaMap",
