@@ -15,10 +15,10 @@ EntityData::EntityData(UUID instanceUUID)
 }
 
 EntityData::EntityData(const ConfigNode& data, bool isPrefab)
-	: fromPrefab(isPrefab)
 {
 	name = data["name"].asString("");
 	prefab = data["prefab"].asString("");
+	icon = data["icon"].asString("");
 
 	if (isPrefab) {
 		parseUUID(prefabUUID, data["uuid"]);
@@ -51,7 +51,12 @@ EntityData::EntityData(const ConfigNode& data, bool isPrefab)
 	}
 }
 
-ConfigNode EntityData::toConfigNode() const
+EntityData::EntityData(const EntityDataDelta& delta)
+{
+	applyDelta(delta);
+}
+
+ConfigNode EntityData::toConfigNode(bool allowPrefabUUID) const
 {
 	ConfigNode::MapType result;
 
@@ -61,10 +66,13 @@ ConfigNode EntityData::toConfigNode() const
 	if (!prefab.isEmpty()) {
 		result["prefab"] = prefab;
 	}
+	if (!icon.isEmpty()) {
+		result["icon"] = icon;
+	}
 	if (instanceUUID.isValid()) {
 		result["uuid"] = instanceUUID.toString();
 	}
-	if (prefabUUID.isValid()) {
+	if (allowPrefabUUID && prefabUUID.isValid()) {
 		result["prefabUUID"] = prefabUUID.toString();
 	}
 	if (parentUUID.isValid()) {
@@ -84,7 +92,7 @@ ConfigNode EntityData::toConfigNode() const
 	if (!children.empty()) {
 		ConfigNode::SequenceType childNodes;
 		for (const auto& child: children) {
-			childNodes.emplace_back(child.toConfigNode());
+			childNodes.emplace_back(child.toConfigNode(allowPrefabUUID));
 		}
 		result["children"] = std::move(childNodes);
 	}
@@ -95,8 +103,8 @@ ConfigNode EntityData::toConfigNode() const
 String EntityData::toYAML() const
 {
 	YAMLConvert::EmitOptions options;
-	options.mapKeyOrder = {{ "name", "uuid", "prefabUUID", "parent", "components", "children" }};
-	return YAMLConvert::generateYAML(toConfigNode(), options);
+	options.mapKeyOrder = {{ "name", "prefab", "icon", "uuid", "prefabUUID", "parent", "components", "children" }};
+	return YAMLConvert::generateYAML(toConfigNode(true), options);
 }
 
 void EntityData::serialize(Serializer& s) const
@@ -147,6 +155,24 @@ const EntityData* EntityData::tryGetInstanceUUID(const UUID& uuid) const
 	return nullptr;
 }
 
+EntityData* EntityData::tryGetInstanceUUID(const UUID& uuid)
+{
+	Expects(uuid.isValid());
+	
+	if (uuid == instanceUUID) {
+		return this;
+	}
+
+	for (auto& c: children) {
+		auto* result = c.tryGetInstanceUUID(uuid);
+		if (result) {
+			return result;
+		}
+	}
+
+	return nullptr;
+}
+
 void EntityData::setName(String name)
 {
 	this->name = std::move(name);
@@ -155,6 +181,11 @@ void EntityData::setName(String name)
 void EntityData::setPrefab(String prefab)
 {
 	this->prefab = std::move(prefab);
+}
+
+void EntityData::setIcon(String icon)
+{
+	this->icon = std::move(icon);
 }
 
 void EntityData::setInstanceUUID(UUID instanceUUID)
@@ -203,6 +234,9 @@ void EntityData::applyDelta(const EntityDataDelta& delta)
 	}
 	if (delta.prefab) {
 		prefab = delta.prefab.value();
+	}
+	if (delta.icon) {
+		icon = delta.icon.value();
 	}
 	if (delta.instanceUUID) {
 		instanceUUID = delta.instanceUUID.value();
@@ -275,7 +309,6 @@ bool EntityData::matchesUUID(const EntityData& other) const
 void EntityData::instantiateWith(const EntityData& instance)
 {
 	// This should only be called on the root of prefab
-	Expects(fromPrefab);
 	Expects(instance.instanceUUID.isValid());
 	
 	instanceUUID = instance.instanceUUID;
@@ -352,4 +385,24 @@ const EntityData& EntityData::asEntityData() const
 const EntityDataDelta& EntityData::asEntityDataDelta() const
 {
 	throw Exception("Not an EntityDataDelta", HalleyExceptions::Entity);
+}
+
+void EntityData::setSceneRoot(bool root)
+{
+	sceneRoot = root;
+}
+
+bool EntityData::isSceneRoot() const
+{
+	return sceneRoot;
+}
+
+std::optional<size_t> EntityData::getChildIndex(const UUID& uuid) const
+{
+	for (size_t i = 0; i < children.size(); ++i) {
+		if (children[i].getInstanceUUID() == uuid) {
+			return i;
+		}
+	}
+	return {};
 }

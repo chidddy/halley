@@ -1,4 +1,6 @@
 #include "ui_stylesheet.h"
+
+#include "ui_colour_scheme.h"
 #include "halley/file_formats/config_file.h"
 #include "halley/audio/audio_clip.h"
 #include "halley/core/graphics/text/font.h"
@@ -7,30 +9,49 @@
 #include "halley/maths/vector4.h"
 using namespace Halley;
 
+Colour4f getColour(const ConfigNode& node, const std::shared_ptr<const UIColourScheme>& colourScheme)
+{
+	if (node.getType() != ConfigNodeType::String) {
+		return Colour4f(1, 1, 1, 1);
+	}
+	
+	const auto& str = node.asString();
+	if (str.startsWith("#")) {
+		return Colour4f::fromString(str);
+	} else if (str.startsWith("$") && colourScheme) {
+		return colourScheme->getColour(str.mid(1));
+	} else {
+		Logger::logWarning("Invalid colour: \"" + str + "\"");
+		return Colour4f();
+	}
+}
+
 template <typename T>
-void loadStyleData(Resources& resources, const String& name, const ConfigNode& node, T& data) {}
+void loadStyleData(UIStyleSheet& styleSheet, const String& name, const ConfigNode& node, T& data)
+{
+	throw Exception("Unreachable code", HalleyExceptions::UI);
+}
 
 template <>
-void loadStyleData(Resources& resources, const String& name, const ConfigNode& node, Sprite& data)
+void loadStyleData(UIStyleSheet& styleSheet, const String& name, const ConfigNode& node, Sprite& data)
 {
 	if (node.getType() == ConfigNodeType::String) {
 		if (!node.asString().isEmpty()) {
-			data = Sprite().setImage(resources, node.asString());
+			data = styleSheet.getColourScheme()->getSprite(styleSheet.getResources(), node.asString(), "");
 		}
 	} else {
-		data = Sprite()
-			.setImage(resources, node["img"].asString())
-			.setColour(Colour4f::fromString(node["colour"].asString("#FFFFFF")));
+		data = styleSheet.getColourScheme()->getSprite(styleSheet.getResources(), node["img"].asString(), node["material"].asString(""))
+			.setColour(getColour(node["colour"], styleSheet.getColourScheme()));
 	}
 }
 
 template <>
-void loadStyleData(Resources& resources, const String& name, const ConfigNode& node, TextRenderer& data)
+void loadStyleData(UIStyleSheet& styleSheet, const String& name, const ConfigNode& node, TextRenderer& data)
 {
 	data = TextRenderer()
-		.setFont(resources.get<Font>(node["font"].asString()))
+		.setFont(styleSheet.getResources().get<Font>(node["font"].asString()))
 		.setSize(node["size"].asFloat())
-		.setColour(Colour4f::fromString(node["colour"].asString()))
+		.setColour(getColour(node["colour"], styleSheet.getColourScheme()))
 		.setOutline(node["outline"].asFloat(0.0f))
 		.setOutlineColour(Colour4f::fromString(node["outlineColour"].asString("#000000")))		
 		.setAlignment(node["alignment"].asFloat(0.0f))
@@ -38,7 +59,7 @@ void loadStyleData(Resources& resources, const String& name, const ConfigNode& n
 }
 
 template <>
-void loadStyleData(Resources& resources, const String& name, const ConfigNode& node, String& data)
+void loadStyleData(UIStyleSheet& styleSheet, const String& name, const ConfigNode& node, String& data)
 {
 	if (node.asString().isEmpty()) {
 		data = "";
@@ -48,36 +69,38 @@ void loadStyleData(Resources& resources, const String& name, const ConfigNode& n
 }
 
 template <>
-void loadStyleData(Resources& resources, const String& name, const ConfigNode& node, Vector4f& data)
+void loadStyleData(UIStyleSheet& styleSheet, const String& name, const ConfigNode& node, Vector4f& data)
 {
 	auto& vals = node.asSequence();
 	data = Vector4f(vals[0].asFloat(), vals[1].asFloat(), vals[2].asFloat(), vals[3].asFloat());
 }
 
 template <>
-void loadStyleData(Resources& resources, const String& name, const ConfigNode& node, float& data)
+void loadStyleData(UIStyleSheet& styleSheet, const String& name, const ConfigNode& node, float& data)
 {
 	data = node.asFloat();
 }
 
 template <>
-void loadStyleData(Resources& resources, const String& name, const ConfigNode& node, Colour4f& data)
+void loadStyleData(UIStyleSheet& styleSheet, const String& name, const ConfigNode& node, Colour4f& data)
 {
-	data = Colour4f::fromString(node.asString());
+	data = getColour(node, styleSheet.getColourScheme());
 }
 
 template <>
-void loadStyleData(Resources& resources, const String& name, const ConfigNode& node, std::shared_ptr<const UIStyleDefinition>& data)
+void loadStyleData(UIStyleSheet& styleSheet, const String& name, const ConfigNode& node, std::shared_ptr<UIStyleDefinition>& data)
 {
-	if (node.getType() != ConfigNodeType::Map) {
-		data = {};
+	if (node.getType() == ConfigNodeType::Map) {
+		data = std::make_shared<UIStyleDefinition>(name, node, styleSheet);
+	} else if (node.getType() == ConfigNodeType::String) {
+		data = styleSheet.getStyle(node.asString());
 	} else {
-		data = std::make_shared<UIStyleDefinition>(name, node, resources);
+		data = {};
 	}
 }
 
 template <typename T>
-const T& getValue(const ConfigNode* node, Resources& resources, const String& name, const String& key, std::unordered_map<String, T>& cache)
+const T& getValue(const ConfigNode* node, UIStyleSheet& styleSheet, const String& name, const String& key, std::unordered_map<String, T>& cache)
 {
 	Expects(node);
 	node->assertValid();
@@ -91,7 +114,7 @@ const T& getValue(const ConfigNode* node, Resources& resources, const String& na
 	// Not in cache, try to load it
 	if (node->hasKey(key)) {
 		T data;
-		loadStyleData(resources, key, (*node)[key], data);
+		loadStyleData(styleSheet, key, (*node)[key], data);
 		cache[key] = data;
 		return cache[key];
 	} else {
@@ -107,7 +130,7 @@ const T& getValue(const ConfigNode* node, Resources& resources, const String& na
 }
 
 template <typename T>
-bool hasValue(const ConfigNode* node, Resources& resources, const String& name, const String& key, std::unordered_map<String, T>& cache)
+bool hasValue(const ConfigNode* node, const String& key, std::unordered_map<String, T>& cache)
 {
 	// Is it already in cache?
 	const auto iter = cache.find(key);
@@ -126,80 +149,97 @@ public:
 	mutable std::unordered_map<String, String> strings;
 	mutable std::unordered_map<String, float> floats;
 	mutable std::unordered_map<String, Colour4f> colours;
-	mutable std::unordered_map<String, std::shared_ptr<const UIStyleDefinition>> subStyles;
+	mutable std::unordered_map<String, std::shared_ptr<UIStyleDefinition>> subStyles;
 };
 
-UIStyleDefinition::UIStyleDefinition(String styleName, const ConfigNode& node, Resources& resources)
+UIStyleDefinition::UIStyleDefinition(String styleName, const ConfigNode& node, UIStyleSheet& styleSheet)
 	: styleName(std::move(styleName))
 	, node(&node)
-	, resources(resources)
+	, styleSheet(styleSheet)
 	, pimpl(std::make_unique<Pimpl>())
 {
-	// Load defaults
-	pimpl->sprites[":default"] = Sprite();
-	pimpl->textRenderers[":default"] = TextRenderer();
-	pimpl->floats[":default"] = 0.0f;
-	pimpl->borders[":default"] = Vector4f();
-	pimpl->strings[":default"] = "";
-	pimpl->subStyles[":default"] = {};
-	pimpl->colours[":default"] = Colour4f(1, 1, 1, 1);
+	loadDefaults();
 }
 
 UIStyleDefinition::~UIStyleDefinition() = default;
 
 std::shared_ptr<const UIStyleDefinition> UIStyleDefinition::getSubStyle(const String& name) const
 {
-	return getValue(node, resources, styleName, name, pimpl->subStyles);
+	return getValue(node, styleSheet, styleName, name, pimpl->subStyles);
 }
 
 const Sprite& UIStyleDefinition::getSprite(const String& name) const
 {
-	return getValue(node, resources, styleName, name, pimpl->sprites);
+	return getValue(node, styleSheet, styleName, name, pimpl->sprites);
 }
 
 const TextRenderer& UIStyleDefinition::getTextRenderer(const String& name) const
 {
-	return getValue(node, resources, styleName, name, pimpl->textRenderers);
+	return getValue(node, styleSheet, styleName, name, pimpl->textRenderers);
 }
 
 bool UIStyleDefinition::hasTextRenderer(const String& name) const
 {
-	return hasValue(node, resources, styleName, name, pimpl->textRenderers);
+	return hasValue(node, name, pimpl->textRenderers);
 }
 
 bool UIStyleDefinition::hasColour(const String& name) const
 {
-	return hasValue(node, resources, styleName, name, pimpl->colours);
+	return hasValue(node, name, pimpl->colours);
 }
 
 bool UIStyleDefinition::hasSubStyle(const String& name) const
 {
-	return hasValue(node, resources, styleName, name, pimpl->subStyles);
+	return hasValue(node, name, pimpl->subStyles);
+}
+
+Vector4f UIStyleDefinition::getBorder(const String& name) const
+{
+	return getValue(node, styleSheet, styleName, name, pimpl->borders);
+}
+
+const String& UIStyleDefinition::getString(const String& name) const
+{
+	return getValue(node, styleSheet, styleName, name, pimpl->strings);
+}
+
+float UIStyleDefinition::getFloat(const String& name) const
+{
+	return getValue(node, styleSheet, styleName, name, pimpl->floats);
+}
+
+Colour4f UIStyleDefinition::getColour(const String& name) const
+{
+	return getValue(node, styleSheet, styleName, name, pimpl->colours);
 }
 
 void UIStyleDefinition::reload(const ConfigNode& node)
 {
 	this->node = &node;
+	loadDefaults();
 }
 
-Vector4f UIStyleDefinition::getBorder(const String& name) const
+void UIStyleDefinition::loadDefaults()
 {
-	return getValue(node, resources, styleName, name, pimpl->borders);
-}
+	pimpl->sprites.clear();
+	pimpl->sprites[":default"] = Sprite();
+	pimpl->textRenderers.clear();
+	pimpl->textRenderers[":default"] = TextRenderer();
+	pimpl->floats.clear();
+	pimpl->floats[":default"] = 0.0f;
+	pimpl->borders.clear();
+	pimpl->borders[":default"] = Vector4f();
+	pimpl->strings.clear();
+	pimpl->strings[":default"] = "";
+	pimpl->colours[":default"] = Colour4f(1, 1, 1, 1);
+	pimpl->colours.clear();
 
-const String& UIStyleDefinition::getString(const String& name) const
-{
-	return getValue(node, resources, styleName, name, pimpl->strings);
-}
-
-float UIStyleDefinition::getFloat(const String& name) const
-{
-	return getValue(node, resources, styleName, name, pimpl->floats);
-}
-
-Colour4f UIStyleDefinition::getColour(const String& name) const
-{
-	return getValue(node, resources, styleName, name, pimpl->colours);
+	for (auto& [k, v]: pimpl->subStyles) {
+		if (v) {
+			v->loadDefaults();
+		}
+	}
+	pimpl->subStyles[":default"] = {};
 }
 
 UIStyleSheet::UIStyleSheet(Resources& resources)
@@ -207,15 +247,15 @@ UIStyleSheet::UIStyleSheet(Resources& resources)
 {
 }
 
-UIStyleSheet::UIStyleSheet(Resources& resources, const ConfigFile& file)
+UIStyleSheet::UIStyleSheet(Resources& resources, const ConfigFile& file, std::shared_ptr<const UIColourScheme> colourScheme)
 	: resources(resources)
 {
-	load(file);
+	load(file, colourScheme);
 }
 
-void UIStyleSheet::load(const ConfigFile& file)
+void UIStyleSheet::load(const ConfigFile& file, std::shared_ptr<const UIColourScheme> colourScheme)
 {
-	load(file.getRoot());
+	load(file.getRoot(), colourScheme);
 	observers[file.getAssetId()] = ConfigObserver(file);
 }
 
@@ -226,6 +266,12 @@ bool UIStyleSheet::updateIfNeeded()
 		return true;
 	}
 	return false;
+}
+
+void UIStyleSheet::reload(std::shared_ptr<const UIColourScheme> colourScheme)
+{
+	lastColourScheme = std::move(colourScheme);
+	update();
 }
 
 bool UIStyleSheet::needsUpdate() const
@@ -242,24 +288,35 @@ void UIStyleSheet::update()
 {
 	for (auto& o: observers) {
 		o.second.update();
-		load(o.second.getRoot());
+		load(o.second.getRoot(), lastColourScheme);
 	}
 }
 
-void UIStyleSheet::load(const ConfigNode& root)
+void UIStyleSheet::load(const ConfigNode& root, std::shared_ptr<const UIColourScheme> colourScheme)
 {
+	lastColourScheme = colourScheme;
+	
 	for (const auto& node: root["uiStyle"].asMap()) {
 		// If it already exists, update existing instance (as it might be kept by UI elements all around)
 		const auto iter = styles.find(node.first);
 		if (iter != styles.end()) {
 			iter->second->reload(node.second);
 		} else {
-			styles[node.first] = std::make_unique<UIStyleDefinition>(node.first, node.second, resources);
+			styles[node.first] = std::make_unique<UIStyleDefinition>(node.first, node.second, *this);
 		}
 	}
 }
 
 std::shared_ptr<const UIStyleDefinition> UIStyleSheet::getStyle(const String& styleName) const
+{
+	auto iter = styles.find(styleName);
+	if (iter == styles.end()) {
+		throw Exception("Unknown style: " + styleName, HalleyExceptions::UI);
+	}
+	return iter->second;
+}
+
+std::shared_ptr<UIStyleDefinition> UIStyleSheet::getStyle(const String& styleName)
 {
 	auto iter = styles.find(styleName);
 	if (iter == styles.end()) {

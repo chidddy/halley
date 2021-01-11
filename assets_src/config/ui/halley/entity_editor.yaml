@@ -1,13 +1,13 @@
 ---
-widget: { class: image, image: "halley_ui/ui_window.png", innerBorder: [ 4, 4, 4, 4 ], colour: "#201427" }
+widget: { class: image, image: "halley_ui/ui_window.png", innerBorder: [ 4, 4, 4, 4 ], colour: $ui_backgroundBox }
 sizer: { type: vertical }
 children:
 - widget: { id: scrollBarPane, class: scrollBarPane }
   sizer: { type: vertical, gap: 8 }
   proportion: 1
-  border: [0, 0, 4, 0]
+  border: [0, 0, 0, 0]
   children:
-  - widget: { id: entityHeader, class: image, image: "halley_ui/title_capsule.png", innerBorder: [ 4, 1, 4, 4 ], colour: "#754589" }
+  - widget: { id: entityHeader, class: image, image: "$ui_title_capsule", innerBorder: [ 4, 1, 4, 4 ], colour: $ui_staticBoxSubdue }
     sizer: { type: vertical }
     border: [0, 0, 0, 4]
     children:
@@ -23,7 +23,10 @@ children:
         - widget: { id: "", class: label, text: "Name", style: "labelLight" }
       - widget: { id: entityName, class: textInput, size: [200, 22], style: inputThin }
         proportion: 1
-  - widget: { id: prefabHeader, class: image, image: "halley_ui/title_capsule.png", innerBorder: [ 4, 1, 4, 4 ], colour: "#754589" }
+      - widget: { id: "", class: label, text: "Icon", style: "labelLight" }
+      - widget: { id: entityIcon, class: dropdown, size: [200, 22], style: dropdownLight }
+        proportion: 1
+  - widget: { id: prefabHeader, class: image, image: "$ui_title_capsule", innerBorder: [ 4, 1, 4, 4 ], colour: $ui_staticBoxSubdue }
     sizer: { type: vertical }
     border: [0, 0, 0, 4]
     children:

@@ -104,7 +104,7 @@ bool SceneEditor::isReadyToCreateWorld() const
 	return getGameResources().exists<ConfigFile>(getSceneEditorStageName());
 }
 
-void SceneEditor::createWorld()
+void SceneEditor::createWorld(std::shared_ptr<const UIColourScheme> colourScheme)
 {
 	world = doCreateWorld();
 	createServices(*world);
@@ -112,7 +112,7 @@ void SceneEditor::createWorld()
 	cameraEntityIds = createCamera();
 	world->setEditor(true);
 
-	onInit();
+	onInit(colourScheme);
 }
 
 World& SceneEditor::getWorld() const
@@ -137,7 +137,7 @@ std::shared_ptr<UIWidget> SceneEditor::makeCustomUI()
 	return {};
 }
 
-void SceneEditor::onSceneLoaded(AssetType assetType, const String& assetId)
+void SceneEditor::onSceneLoaded(Prefab& scene)
 {
 }
 
@@ -253,7 +253,7 @@ void SceneEditor::changeZoom(int amount, Vector2f cursorPosRelToCamera)
 	transform.setGlobalPosition(roundPosition(transform.getGlobalPosition() + translate, camera.zoom));
 }
 
-void SceneEditor::setSelectedEntity(const UUID& id, ConfigNode& entityData)
+void SceneEditor::setSelectedEntity(const UUID& id, EntityData& entityData)
 {
 	const auto curId = selectedEntity ? selectedEntity.value().getInstanceUUID() : UUID();
 	if (id != curId) {
@@ -268,7 +268,7 @@ void SceneEditor::setSelectedEntity(const UUID& id, ConfigNode& entityData)
 	onEntitySelected(selectedEntity);
 }
 
-void SceneEditor::onEntityAdded(const UUID& id, const ConfigNode& entityData)
+void SceneEditor::onEntityAdded(const UUID& id, const EntityData& entityData)
 {
 	if (id.isValid()) {
 		onEntityAdded(getEntity(id), entityData);
@@ -282,30 +282,30 @@ void SceneEditor::onEntityRemoved(const UUID& id)
 	}
 }
 
-void SceneEditor::onEntityMoved(const UUID& id, const ConfigNode& entityData)
+void SceneEditor::onEntityMoved(const UUID& id, const EntityData& entityData)
 {
 	if (id.isValid()) {
 		onEntityMoved(getEntity(id), entityData);
 	}
 }
 
-void SceneEditor::onEntityModified(const UUID& id, const ConfigNode& entityData)
+void SceneEditor::onEntityModified(const UUID& id, const EntityData& entityData)
 {
 	if (id.isValid()) {
 		onEntityModified(getEntity(id), entityData);
 	}
 }
 
-void SceneEditor::onEntityModified(EntityRef entity, const ConfigNode& entityData)
+void SceneEditor::onEntityModified(EntityRef entity, const EntityData& entityData)
 {}
 
-void SceneEditor::onEntityAdded(EntityRef entity, const ConfigNode& entityData)
+void SceneEditor::onEntityAdded(EntityRef entity, const EntityData& entityData)
 {}
 
 void SceneEditor::onEntityRemoved(EntityRef entity)
 {}
 
-void SceneEditor::onEntityMoved(EntityRef entity, const ConfigNode& entityData)
+void SceneEditor::onEntityMoved(EntityRef entity, const EntityData& entityData)
 {}
 
 void SceneEditor::showEntity(const UUID& id)
@@ -377,7 +377,7 @@ Vector2f SceneEditor::roundPosition(Vector2f pos, float zoom) const
 	return (pos * zoom).round() / zoom;
 }
 
-void SceneEditor::onInit()
+void SceneEditor::onInit(std::shared_ptr<const UIColourScheme> colourScheme)
 {
 }
 

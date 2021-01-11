@@ -7,7 +7,6 @@
 #include "halley/tools/assets/delete_assets_task.h"
 #include <boost/filesystem/operations.hpp>
 #include "halley/tools/file/filesystem.h"
-#include "halley/support/logger.h"
 #include "halley/resources/resource_data.h"
 #include "halley/tools/assets/metadata_importer.h"
 #include "halley/concurrency/concurrent.h"
@@ -16,7 +15,7 @@ using namespace Halley;
 using namespace std::chrono_literals;
 
 CheckAssetsTask::CheckAssetsTask(Project& project, bool oneShot)
-	: EditorTask("Check assets", true, false)
+	: EditorTask("Checking assets", true, false)
 	, project(project)
 	, monitorAssets(project.getUnpackedAssetsPath())
 	, monitorAssetsSrc(project.getAssetsSrcPath())
@@ -57,7 +56,7 @@ void CheckAssetsTask::run()
 		}
 
 		if (first | monitorAssets.poll() | monitorAssetsSrc.poll() | monitorSharedAssetsSrc.poll()) { // Don't short-circuit
-			Logger::logInfo("Scanning for asset changes...");
+			logInfo("Scanning for asset changes...");
 			const auto assets = checkAllAssets(project.getImportAssetsDatabase(), { project.getAssetsSrcPath(), project.getSharedAssetsSrcPath() }, true);
 			if (!isCancelled()) {
 				importing |= requestImport(project.getImportAssetsDatabase(), assets, project.getUnpackedAssetsPath(), "Importing assets", true);
@@ -66,7 +65,7 @@ void CheckAssetsTask::run()
 		
 		const bool sharedGenSrcResult = first | monitorSharedGenSrc.poll();
 		if (sharedGenSrcResult | monitorGen.poll() | monitorGenSrc.poll()) {
-			Logger::logInfo("Scanning for codegen changes...");
+			logInfo("Scanning for codegen changes...");
 			const auto assets = checkAllAssets(project.getCodegenDatabase(), { project.getSharedGenSrcPath(), project.getGenSrcPath() }, false);
 			if (!isCancelled()) {
 				importing |= requestImport(project.getCodegenDatabase(), assets, project.getGenPath(), "Generating code", false);
@@ -74,7 +73,7 @@ void CheckAssetsTask::run()
 		}
 
 		if (sharedGenSrcResult | monitorSharedGen.poll()) {
-			Logger::logInfo("Scanning for Halley codegen changes...");
+			logInfo("Scanning for Halley codegen changes...");
 			const auto assets = checkAllAssets(project.getSharedCodegenDatabase(), { project.getSharedGenSrcPath() }, false);
 			if (!isCancelled()) {
 				importing |= requestImport(project.getSharedCodegenDatabase(), assets, project.getSharedGenPath(), "Generating code", false);
@@ -192,7 +191,7 @@ std::map<String, ImportAssetsDatabaseEntry> CheckAssetsTask::checkSpecificAssets
 	std::map<String, ImportAssetsDatabaseEntry> assets;
 	bool dbChanged = false;
 	for (auto& path: paths) {
-		dbChanged = dbChanged | importFile(db, assets, false, false, directoryMetas, project.getAssetsSrcPath(), path);
+		dbChanged = importFile(db, assets, false, false, directoryMetas, project.getAssetsSrcPath(), path) || dbChanged;
 	}
 	if (dbChanged) {
 		db.save();
@@ -240,14 +239,14 @@ std::map<String, ImportAssetsDatabaseEntry> CheckAssetsTask::checkAllAssets(Impo
 			if (skipGen) {
 				const auto basePath = project.getGenSrcPath();
 				const auto newPath = srcPath.makeRelativeTo(basePath) / filePath;
-				dbChanged = dbChanged | importFile(db, assets, isCodegen, skipGen, collectDirMeta ? directoryMetas : dummyDirMetas, basePath, newPath);
+				dbChanged = importFile(db, assets, isCodegen, skipGen, collectDirMeta ? directoryMetas : dummyDirMetas, basePath, newPath) || dbChanged;
 			} else {
-				dbChanged = dbChanged | importFile(db, assets, isCodegen, skipGen, collectDirMeta ? directoryMetas : dummyDirMetas, srcPath, filePath);
+				dbChanged = importFile(db, assets, isCodegen, skipGen, collectDirMeta ? directoryMetas : dummyDirMetas, srcPath, filePath) || dbChanged;
 			}
 		}
 	}
 
-	dbChanged = dbChanged | db.purgeMissingInputs();
+	dbChanged = db.purgeMissingInputs() || dbChanged;
 	
 	if (dbChanged) {
 		db.save();
@@ -269,14 +268,15 @@ bool CheckAssetsTask::requestImport(ImportAssetsDatabase& db, std::map<String, I
 			}
 		}
 
-		Logger::logInfo("Assets to be deleted: " + toString(toDelete.size()));
+		logInfo("Assets to be deleted: " + toString(toDelete.size()));
 		addPendingTask(EditorTaskAnchor(std::make_unique<DeleteAssetsTask>(db, dstPath, std::move(toDelete))));
 	}
 
 	// Import assets
-	auto toImport = filterNeedsImporting(db, assets);
-	if (!toImport.empty() || !deletedAssets.empty()) {
-		Logger::logInfo("Assets to be imported: " + toString(toImport.size()));
+	const bool hasImport = hasAssetsToImport(db, assets);
+	if (hasImport || !deletedAssets.empty()) {
+		auto toImport = hasImport ? getAssetsToImport(db, assets) : std::vector<ImportAssetsDatabaseEntry>();
+		logInfo("Importing " + toString(toImport.size()) + " assets and deleting " + toString(deletedAssets.size()) + " assets.");
 		addPendingTask(EditorTaskAnchor(std::make_unique<ImportAssetsTask>(taskName, db, projectAssetImporter, dstPath, std::move(toImport), std::move(deletedAssets), project, packAfter)));
 		return true;
 	}
@@ -292,12 +292,22 @@ void CheckAssetsTask::requestRefreshAsset(Path path)
 	condition.notify_one();
 }
 
-std::vector<ImportAssetsDatabaseEntry> CheckAssetsTask::filterNeedsImporting(ImportAssetsDatabase& db, const std::map<String, ImportAssetsDatabaseEntry>& assets)
+bool CheckAssetsTask::hasAssetsToImport(ImportAssetsDatabase& db, const std::map<String, ImportAssetsDatabaseEntry>& assets)
+{
+	for (const auto& a: assets) {
+		if (db.needsImporting(a.second, false)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+std::vector<ImportAssetsDatabaseEntry> CheckAssetsTask::getAssetsToImport(ImportAssetsDatabase& db, const std::map<String, ImportAssetsDatabaseEntry>& assets)
 {
 	Vector<ImportAssetsDatabaseEntry> toImport;
 
-	for (auto& a: assets) {
-		if (db.needsImporting(a.second)) {
+	for (const auto& a: assets) {
+		if (db.needsImporting(a.second, true)) {
 			toImport.push_back(a.second);
 		}
 	}

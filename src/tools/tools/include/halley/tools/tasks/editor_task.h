@@ -9,6 +9,8 @@
 
 namespace Halley
 {
+	enum class LoggerLevel;
+
 	enum class EditorTaskStatus
 	{
 		WaitingToStart,
@@ -34,11 +36,19 @@ namespace Halley
 
 		void setName(String name);
 		void setProgress(float progress, String label = "");
-		void addError(const String& message);
+
+		void logDev(String message);
+		void logInfo(String message);
+		void logWarning(String message);
+		void logError(String message);
+		void log(LoggerLevel level, String message);
 		
 		bool isCancelled() const;
 		bool hasError() const;
-		const String& getError() const;
+
+		size_t getNumMessages() const;
+		std::vector<std::pair<LoggerLevel, String>> copyMessagesHead(size_t max, std::optional<LoggerLevel> filter = {}) const;
+		std::vector<std::pair<LoggerLevel, String>> copyMessagesTail(size_t max, std::optional<LoggerLevel> filter = {}) const;
 
 		bool hasPendingTasks() const;
 		void addPendingTask(EditorTaskAnchor&& task);
@@ -61,7 +71,8 @@ namespace Halley
 		const bool isVisible;
 		
 		bool error = false;
-		String errorMsg;
+		std::list<std::pair<LoggerLevel, String>> messageLog;
+		std::atomic<size_t> numMessages;
 	};
 
 	class EditorTaskAnchor
@@ -91,7 +102,10 @@ namespace Halley
 		void setId(int value);
 
 		bool hasError() const;
-		const String& getError() const;
+		
+		size_t getNumMessages() const;
+		std::vector<std::pair<LoggerLevel, String>> copyMessagesHead(size_t max, std::optional<LoggerLevel> filter = {}) const;
+		std::vector<std::pair<LoggerLevel, String>> copyMessagesTail(size_t max, std::optional<LoggerLevel> filter = {}) const;
 
 		Vector<EditorTaskAnchor> getContinuations();
 		Vector<EditorTaskAnchor> getPendingTasks();
@@ -108,7 +122,6 @@ namespace Halley
 		float progress = 0;
 		bool terminated = false;
 		bool error = false;
-		String errorMsg;
 		String progressLabel;
 
 		int id = 0;

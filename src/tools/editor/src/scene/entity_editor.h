@@ -1,4 +1,5 @@
 #pragma once
+#include "entity_icons.h"
 #include "halley/core/editor_extensions/scene_editor_interface.h"
 #include "halley/tools/ecs/fields_schema.h"
 #include "halley/ui/ui_widget.h"
@@ -24,7 +25,7 @@ namespace Halley {
 		void addFieldFactories(std::vector<std::unique_ptr<IComponentEditorFieldFactory>> factories);
 		void resetFieldFactories();
 
-		bool loadEntity(const String& id, ConfigNode& data, const ConfigNode* prefabData, bool force, Resources& gameResources);
+		bool loadEntity(const String& id, EntityData& data, const Prefab* prefabData, bool force, Resources& gameResources);
 		void unloadEntity();
 		void reloadEntity();
 		void onFieldChangedByGizmo(const String& componentName, const String& fieldName);
@@ -42,16 +43,20 @@ namespace Halley {
 		UIFactory& factory;
 		ECSData* ecsData = nullptr;
 		SceneEditorWindow* sceneEditor = nullptr;
+		const EntityIcons* entityIcons;
 		std::unique_ptr<ComponentEditorContext> context;
 		
 		std::shared_ptr<UIWidget> fields;
 		std::shared_ptr<UITextInput> entityName;
+		std::shared_ptr<UIDropdown> entityIcon;
 		std::shared_ptr<SelectAssetWidget> prefabName;
 		std::map<String, std::unique_ptr<IComponentEditorFieldFactory>> fieldFactories;
 
+		EntityData* currentEntityData = nullptr;
+		EntityData prevEntityData;
+
 		String currentId;
-		ConfigNode* currentEntityData = nullptr;
-		const ConfigNode* prefabData = nullptr;
+		const Prefab* prefabData = nullptr;
 		bool needToReloadUI = false;
 		bool isPrefab = false;
 		Resources* gameResources = nullptr;
@@ -70,11 +75,12 @@ namespace Halley {
 		String getName() const;
 		void setPrefabName(const String& prefab);
 		void editPrefab();
+		void setIcon(const String& icon);
 
 		void onEntityUpdated() override;
 		void setTool(SceneEditorTool tool, const String& componentName, const String& fieldName, ConfigNode options) override;
-		ConfigNode& getEntityData();
-		const ConfigNode& getEntityData() const;
+		EntityData& getEntityData();
+		const EntityData& getEntityData() const;
 
 		std::set<String> getComponentsOnEntity() const;
 		std::set<String> getComponentsOnPrefab() const;

@@ -6,6 +6,8 @@
 #include <map>
 
 namespace Halley {
+	class UIStyleSheet;
+	class UIColourScheme;
 	class ConfigFile;
 	class ConfigNode;
 	class ConfigObserver;
@@ -15,7 +17,7 @@ namespace Halley {
 	class UIStyleDefinition
 	{
 	public:
-		UIStyleDefinition(String styleName, const ConfigNode& node, Resources& resources);
+		UIStyleDefinition(String styleName, const ConfigNode& node, UIStyleSheet& styleSheet);
 		~UIStyleDefinition();
 
 		const Sprite& getSprite(const String& name) const;
@@ -37,9 +39,11 @@ namespace Halley {
 		
 		const String styleName;
 		const ConfigNode* node = nullptr;
-		Resources& resources;
+		UIStyleSheet& styleSheet;
 
 		std::unique_ptr<Pimpl> pimpl;
+
+		void loadDefaults();
 	};
 
 	class UIStyleSheet {
@@ -47,19 +51,25 @@ namespace Halley {
 
 	public:
 		UIStyleSheet(Resources& resources);
-		UIStyleSheet(Resources& resources, const ConfigFile& file);
+		UIStyleSheet(Resources& resources, const ConfigFile& file, std::shared_ptr<const UIColourScheme> colourScheme = {});
 
-		void load(const ConfigFile& file);
+		void load(const ConfigFile& file, std::shared_ptr<const UIColourScheme> colourScheme = {});
 
 		bool updateIfNeeded();
+		void reload(std::shared_ptr<const UIColourScheme> colourScheme);
+
+		Resources& getResources() const { return resources; }
+		const std::shared_ptr<const UIColourScheme>& getColourScheme() const { return lastColourScheme; }
+		std::shared_ptr<const UIStyleDefinition> getStyle(const String& styleName) const;
+		std::shared_ptr<UIStyleDefinition> getStyle(const String& styleName);
 
 	private:
 		Resources& resources;
 		std::unordered_map<String, std::shared_ptr<UIStyleDefinition>> styles;
 		std::map<String, ConfigObserver> observers;
+		std::shared_ptr<const UIColourScheme> lastColourScheme = nullptr;
 
-		void load(const ConfigNode& node);
-		std::shared_ptr<const UIStyleDefinition> getStyle(const String& styleName) const;
+		void load(const ConfigNode& node, std::shared_ptr<const UIColourScheme> colourScheme);
 
 		bool needsUpdate() const;
 		void update();

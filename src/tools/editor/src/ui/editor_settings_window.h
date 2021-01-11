@@ -7,19 +7,22 @@ namespace Halley {
 	class Project;
 	class ProjectLoader;
 	class Preferences;
+	class EditorUIFactory;
+	class ProjectWindow;
 
 	class EditorSettingsWindow : public UIWidget
 	{
 	public:
-		explicit EditorSettingsWindow(UIFactory& factory, Preferences& preferences, Project& project, ProjectLoader& projectLoader);
+		explicit EditorSettingsWindow(EditorUIFactory& factory, Preferences& preferences, Project& project, ProjectLoader& projectLoader, ProjectWindow& projectWindow);
 
 		void onMakeUI() override;
 
 	private:
-		UIFactory& factory;
+		EditorUIFactory& factory;
 		Preferences& preferences;
 		Project& project;
 		ProjectLoader& projectLoader;
+		ProjectWindow& projectWindow;
 
 		Preferences workingCopy;
 

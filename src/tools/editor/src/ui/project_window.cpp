@@ -11,11 +11,13 @@
 #include "src/editor_root_stage.h"
 #include "src/halley_editor.h"
 #include "src/assets/assets_browser.h"
+#include "src/scene/choose_asset_window.h"
 #include "src/scene/scene_editor_window.h"
+#include "src/ui/editor_ui_factory.h"
 
 using namespace Halley;
 
-ProjectWindow::ProjectWindow(UIFactory& factory, HalleyEditor& editor, Project& project, Resources& resources, const HalleyAPI& api)
+ProjectWindow::ProjectWindow(EditorUIFactory& factory, HalleyEditor& editor, Project& project, Resources& resources, const HalleyAPI& api)
 	: UIWidget("project_window", {}, UISizer(UISizerType::Vertical))
 	, factory(factory)
 	, editor(editor)
@@ -56,7 +58,7 @@ void ProjectWindow::makeUI()
 
 	makeToolbar();
 	makePagedPane();
-	uiBottom->add(std::make_shared<TaskBar>(factory, *tasks), 1);
+	uiBottom->add(std::make_shared<TaskBar>(factory, *tasks, api), 1);
 
 	setHandle(UIEventType::NavigateTo, [=] (const UIEvent& event)
 	{
@@ -64,8 +66,7 @@ void ProjectWindow::makeUI()
 		if (uri.startsWith("asset:")) {
 			auto splitURI = uri.split(':');
 			if (splitURI.size() == 3) {
-				toolbar->getList()->setSelectedOptionId(toString(EditorTabs::Assets));
-				assetEditorWindow->showAsset(fromString<AssetType>(splitURI.at(1)), splitURI.at(2));
+				openAsset(fromString<AssetType>(splitURI.at(1)), splitURI.at(2));
 			}
 		}
 	});
@@ -91,15 +92,13 @@ void ProjectWindow::makePagedPane()
 	}
 
 	assetEditorWindow = std::make_shared<AssetsBrowser>(factory, project, *this);
-	sceneEditorTabs = std::make_shared<SceneEditorTabs>(factory, project, api);
 	consoleWindow = std::make_shared<ConsoleWindow>(factory);
-	auto settings = std::make_shared<EditorSettingsWindow>(factory, editor.getPreferences(), project, editor.getProjectLoader());
+	auto settings = std::make_shared<EditorSettingsWindow>(factory, editor.getPreferences(), project, editor.getProjectLoader(), *this);
 	auto properties = std::make_shared<GamePropertiesWindow>(factory, project);
 	auto ecs = std::make_shared<ECSWindow>(factory);
 	
 	pagedPane = std::make_shared<UIPagedPane>("pages", numOfStandardTools);
 	pagedPane->getPage(static_cast<int>(EditorTabs::Assets))->add(assetEditorWindow, 1, Vector4f(8, 8, 8, 8));
-	pagedPane->getPage(static_cast<int>(EditorTabs::Scene))->add(sceneEditorTabs, 1, Vector4f(8, 8, 8, 8));
 	pagedPane->getPage(static_cast<int>(EditorTabs::ECS))->add(ecs, 1, Vector4f(8, 8, 8, 8));
 	pagedPane->getPage(static_cast<int>(EditorTabs::Remotes))->add(consoleWindow, 1, Vector4f(8, 8, 8, 8));
 	pagedPane->getPage(static_cast<int>(EditorTabs::Properties))->add(properties, 1, Vector4f(8, 8, 8, 8));
@@ -199,6 +198,16 @@ void ProjectWindow::update(Time t, bool moved)
 	setMinSize(Vector2f(size));
 }
 
+bool ProjectWindow::onKeyPress(KeyboardKeyPress key)
+{
+	if (key.is(KeyCode::P, KeyMods::Ctrl)) {
+		openAssetFinder();
+		return true;
+	}
+	
+	return false;
+}
+
 void ProjectWindow::setPage(EditorTabs tab)
 {
 	pagedPane->setPage(static_cast<int>(tab));
@@ -217,13 +226,43 @@ LocalisedString ProjectWindow::setCustomPage(const String& pageId)
 	return LocalisedString::fromHardcodedString("???");
 }
 
-void ProjectWindow::openPrefab(const String& name, AssetType assetType)
+void ProjectWindow::openFile(const String& assetId)
 {
-	sceneEditorTabs->load(assetType, name);
-	toolbar->getList()->setSelectedOption(static_cast<int>(EditorTabs::Scene));
+	toolbar->getList()->setSelectedOptionId(toString(EditorTabs::Assets));
+	assetEditorWindow->openFile(assetId);
+}
+
+void ProjectWindow::openAsset(AssetType type, const String& assetId)
+{
+	toolbar->getList()->setSelectedOptionId(toString(EditorTabs::Assets));
+	assetEditorWindow->openAsset(type, assetId);
+}
+
+const HalleyAPI& ProjectWindow::getAPI() const
+{
+	return api;
 }
 
 EditorTaskSet& ProjectWindow::getTasks() const
 {
 	return *tasks;
+}
+
+void ProjectWindow::openAssetFinder()
+{
+	if (!assetFinder) {
+		assetFinder = std::make_shared<ChooseImportAssetWindow>(factory, project, [=] (std::optional<String> result)
+		{
+			if (result) {
+				openFile(result.value());
+			}
+			assetFinder.reset();
+		});
+		getRoot()->addChild(assetFinder);
+	}
+}
+
+void ProjectWindow::reloadProject()
+{
+	destroy();
 }

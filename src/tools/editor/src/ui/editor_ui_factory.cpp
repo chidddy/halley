@@ -11,26 +11,17 @@
 #include "src/scene/scene_editor_canvas.h"
 using namespace Halley;
 
-static std::shared_ptr<UIStyleSheet> makeStyleSheet(Resources& resources)
+EditorUIFactory::EditorUIFactory(const HalleyAPI& api, Resources& resources, I18N& i18n, const String& colourSchemeName)
+	: UIFactory(api, resources, i18n)
 {
-	auto result = std::make_shared<UIStyleSheet>(resources);
-	for (auto& style: resources.enumerate<ConfigFile>()) {
-		if (style.startsWith("ui_style/")) {
-			result->load(*resources.get<ConfigFile>(style));
-		}
-	}
-	return result;
-}
-
-EditorUIFactory::EditorUIFactory(const HalleyAPI& api, Resources& resources, I18N& i18n)
-	: UIFactory(api, resources, i18n, makeStyleSheet(resources))
-{
+	loadColourSchemes();
+	setColourScheme(colourSchemeName);
+	
 	UIInputButtons listButtons;
 	setInputButtons("list", listButtons);
 
 	addFactory("scrollBackground", [=] (const ConfigNode& node) { return makeScrollBackground(node); });
 	addFactory("animationEditorDisplay", [=] (const ConfigNode& node) { return makeAnimationEditorDisplay(node); });
-	addFactory("assetEditor", [=] (const ConfigNode& node) { return makeAssetEditor(node); });
 	addFactory("metadataEditor", [=] (const ConfigNode& node) { return makeMetadataEditor(node); });
 	addFactory("sceneEditorCanvas", [=](const ConfigNode& node) { return makeSceneEditorCanvas(node); });
 	addFactory("entityList", [=](const ConfigNode& node) { return makeEntityList(node); });
@@ -38,9 +29,30 @@ EditorUIFactory::EditorUIFactory(const HalleyAPI& api, Resources& resources, I18
 	addFactory("selectAsset", [=](const ConfigNode& node) { return makeSelectAsset(node); });
 }
 
+Sprite EditorUIFactory::makeAssetTypeIcon(AssetType type) const
+{
+	return Sprite()
+		.setImage(getResources(), Path("ui") / "assetTypes" / toString(type) + ".png")
+		.setColour(colourScheme->getColour("icon_" + toString(type)));
+}
+
+Sprite EditorUIFactory::makeImportAssetTypeIcon(ImportAssetType type) const
+{
+	return Sprite()
+		.setImage(getResources(), Path("ui") / "assetTypes" / toString(type) + ".png")
+		.setColour(colourScheme->getColour("icon_" + toString(type)));
+}
+
+Sprite EditorUIFactory::makeDirectoryIcon(bool up) const
+{
+	return Sprite()
+		.setImage(getResources(), Path("ui") / "assetTypes" / (up ? "directoryUp" : "directory") + ".png")
+		.setColour(colourScheme->getColour("icon_directory"));
+}
+
 std::shared_ptr<UIWidget> EditorUIFactory::makeScrollBackground(const ConfigNode& entryNode)
 {
-	return std::make_shared<ScrollBackground>("scrollBackground", resources, makeSizerOrDefault(entryNode, UISizer(UISizerType::Vertical)));
+	return std::make_shared<ScrollBackground>("scrollBackground", resources, makeSizerOrDefault(entryNode, UISizer(UISizerType::Vertical)), getColourScheme()->getColour("scrollBackground"));
 }
 
 std::shared_ptr<UIWidget> EditorUIFactory::makeAnimationEditorDisplay(const ConfigNode& entryNode)
@@ -48,11 +60,6 @@ std::shared_ptr<UIWidget> EditorUIFactory::makeAnimationEditorDisplay(const Conf
 	auto& node = entryNode["widget"];
 	auto id = node["id"].asString();
 	return std::make_shared<AnimationEditorDisplay>(id, resources);
-}
-
-std::shared_ptr<UIWidget> EditorUIFactory::makeAssetEditor(const ConfigNode& entryNode)
-{
-	return std::make_shared<AssetEditorWindow>(*this);
 }
 
 std::shared_ptr<UIWidget> EditorUIFactory::makeMetadataEditor(const ConfigNode& entryNode)
@@ -86,4 +93,66 @@ std::shared_ptr<UIWidget> EditorUIFactory::makeSelectAsset(const ConfigNode& ent
 	auto& node = entryNode["widget"];
 	auto id = node["id"].asString();
 	return std::make_shared<SelectAssetWidget>(id, *this, fromString<AssetType>(node["assetType"].asString()));
+}
+
+void EditorUIFactory::loadColourSchemes()
+{
+	for (const auto& assetId: resources.enumerate<ConfigFile>()) {
+		if (assetId.startsWith("colour_schemes/")) {
+			auto scheme = std::make_shared<UIColourScheme>(resources.get<ConfigFile>(assetId)->getRoot(), resources);
+			if (scheme->isEnabled()) {
+				colourSchemes.push_back(scheme);
+			}
+		}
+	}
+}
+
+std::vector<String> EditorUIFactory::getColourSchemeNames() const
+{
+	std::vector<String> result;
+	for (auto& scheme: colourSchemes) {
+		result.push_back(scheme->getName());
+	}
+	std::sort(result.begin(), result.end());
+	return result;
+}
+
+void EditorUIFactory::setColourScheme(const String& name)
+{
+	bool found = false;
+
+	for (auto& scheme: colourSchemes) {
+		if (scheme->getName() == name) {
+			colourScheme = scheme;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found && !colourSchemes.empty()) {
+		colourScheme = colourSchemes.front();
+		found = true;
+	}
+
+	if (found) {
+		reloadStyleSheet();
+	}
+}
+
+void EditorUIFactory::reloadStyleSheet()
+{
+	const auto cur = getStyleSheet();
+	
+	if (true || !cur) {
+		auto styleSheet = std::make_shared<UIStyleSheet>(resources);
+		for (auto& style: resources.enumerate<ConfigFile>()) {
+			if (style.startsWith("ui_style/")) {
+				styleSheet->load(*resources.get<ConfigFile>(style), colourScheme);
+			}
+		}
+		setStyleSheet(std::move(styleSheet));
+	} else {
+		// This doesn't work properly atm
+		cur->reload(colourScheme);
+	}
 }

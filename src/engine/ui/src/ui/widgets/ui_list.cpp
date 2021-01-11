@@ -45,7 +45,9 @@ bool UIList::setSelectedOption(int option)
 		playSound(style.getString("selectionChangedSound"));
 
 		sendEvent(UIEvent(UIEventType::ListSelectionChanged, getId(), curItem->getId(), curOption));
-		sendEvent(UIEvent(UIEventType::MakeAreaVisible, getId(), getOptionRect(curOption)));
+		if (scrollToSelection) {
+			sendEvent(UIEvent(UIEventType::MakeAreaVisible, getId(), getOptionRect(curOption)));
+		}
 		
 		if (getDataBindFormat() == UIDataBind::Format::String) {
 			notifyDataBind(curItem->getId());
@@ -81,9 +83,9 @@ UIStyle UIList::getStyle() const
 	return style;
 }
 
-void UIList::addTextItem(const String& id, const LocalisedString& label, float maxWidth, bool centre)
+std::shared_ptr<UILabel> UIList::makeLabel(String id, LocalisedString label, float maxWidth) const
 {
-	auto widget = std::make_shared<UILabel>(id + "_label", style.getTextRenderer("label"), label);
+	auto widget = std::make_shared<UILabel>(std::move(id), style.getTextRenderer("label"), std::move(label));
 	if (maxWidth > 0) {
 		widget->setMaxWidth(maxWidth);
 	}
@@ -96,18 +98,30 @@ void UIList::addTextItem(const String& id, const LocalisedString& label, float m
 		widget->setDisablable(style.getTextRenderer("label"), style.getTextRenderer("disabledStyle"));
 	}
 
+	return widget;
+}
+
+void UIList::addTextItem(const String& id, LocalisedString label, float maxWidth, bool centre)
+{
 	auto item = std::make_shared<UIListItem>(id, *this, style.getSubStyle("item"), int(getNumberOfItems()), style.getBorder("extraMouseBorder"));
-	item->add(widget, 0, Vector4f(), centre ? UISizerAlignFlags::CentreHorizontal : UISizerFillFlags::Fill);
+	item->add(makeLabel(id + "_label", std::move(label), maxWidth), 0, Vector4f(), centre ? UISizerAlignFlags::CentreHorizontal : UISizerFillFlags::Fill);
 	addItem(item);
 }
 
 void UIList::addImage(const String& id, std::shared_ptr<UIImage> image, float proportion, Vector4f border, int fillFlags, std::optional<UIStyle> styleOverride)
 {
+	Colour4f baseCol;
+	if (style.hasColour("imageColour")) {
+		baseCol = style.getColour("imageColour");
+		image->getSprite().setColour(baseCol);
+	} else {
+		baseCol = image->getSprite().getColour();
+	}
 	if (style.hasColour("selectedImageColour")) {
-		image->setSelectable(image->getSprite().getColour(), style.getColour("selectedImageColour"));
+		image->setSelectable(baseCol, style.getColour("selectedImageColour"));
 	}
 
-	addItem(id, image, proportion, border, fillFlags, styleOverride);
+	addItem(id, image, proportion, border, fillFlags, std::move(styleOverride));
 }
 
 void UIList::addItem(const String& id, std::shared_ptr<IUIElement> element, float proportion, Vector4f border, int fillFlags, std::optional<UIStyle> styleOverride)
@@ -123,6 +137,11 @@ void UIList::clear()
 	items.clear();
 	curOption = -1;
 	UIWidget::clear();
+	layout();
+
+	if (scrollToSelection) {
+		sendEvent(UIEvent(UIEventType::MakeAreaVisibleCentered, getId(), Rect4f(0, 0, 1, 1)));
+	}
 }
 
 void UIList::setItemEnabled(const String& id, bool enabled)
@@ -316,6 +335,11 @@ void UIList::setUniformSizedItems(bool enabled)
 	uniformSizedItems = enabled;
 }
 
+void UIList::setScrollToSelection(bool enabled)
+{
+	scrollToSelection = enabled;
+}
+
 bool UIList::ignoreClip() const
 {
 	return true;
@@ -427,18 +451,22 @@ bool UIList::onKeyPress(KeyboardKeyPress key)
 
 	if (key.is(KeyCode::Down)) {
 		moveSelection(0, 1);
+		return true;
 	}
 
 	if (key.is(KeyCode::Left)) {
 		moveSelection(-1, 0);
+		return true;
 	}
 
 	if (key.is(KeyCode::Right)) {
 		moveSelection(1, 0);
+		return true;
 	}
 
 	if (key.is(KeyCode::Enter)) {
 		onAccept();
+		return true;
 	}
 
 	return false;
@@ -495,7 +523,9 @@ void UIList::update(Time t, bool moved)
 	}
 
 	if (firstUpdate) {
-		sendEvent(UIEvent(UIEventType::MakeAreaVisibleCentered, getId(), getOptionRect(curOption)));
+		if (scrollToSelection) {
+			sendEvent(UIEvent(UIEventType::MakeAreaVisibleCentered, getId(), getOptionRect(curOption)));
+		}
 		firstUpdate = false;
 	}
 }

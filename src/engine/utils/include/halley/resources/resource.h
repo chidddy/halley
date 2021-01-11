@@ -23,10 +23,10 @@ namespace Halley
 		BitmapFont,
 		Image,
 		Texture,
-		Material,
+		MaterialDefinition,
 		Animation,
-		Config,
-		Audio,
+		ConfigFile,
+		AudioClip,
 		AudioEvent,
 		Sprite,
 		SpriteSheet,
@@ -35,6 +35,34 @@ namespace Halley
 		VariableTable,
 		Prefab,
 		Scene
+	};
+
+	template <>
+	struct EnumNames<ImportAssetType> {
+		constexpr std::array<const char*, 20> operator()() const {
+			return{{
+				"undefined",
+				"skip",
+				"codegen",
+				"simpleCopy",
+				"font",
+				"bitmapFont",
+				"image",
+				"texture",
+				"materialDefinition",
+				"animation",
+				"configFile",
+				"audioClip",
+				"audioEvent",
+				"sprite",
+				"spriteSheet",
+				"shader",
+				"mesh",
+				"variableTable",
+				"prefab",
+				"scene"
+			}};
+		}
 	};
 
 	// This order matters.

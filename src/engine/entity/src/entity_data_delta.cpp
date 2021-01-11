@@ -28,6 +28,9 @@ EntityDataDelta::EntityDataDelta(const EntityData& from, const EntityData& to, c
 	if (from.prefab != to.prefab) {
 		prefab = to.prefab;
 	}
+	if (from.icon != to.icon) {
+		icon = to.icon;
+	}
 	if (from.instanceUUID != to.instanceUUID) {
 		instanceUUID = to.instanceUUID;
 	}
@@ -99,7 +102,7 @@ EntityDataDelta::EntityDataDelta(const EntityData& from, const EntityData& to, c
 
 bool EntityDataDelta::hasChange() const
 {
-	return name || prefab || instanceUUID || prefabUUID || parentUUID
+	return name || prefab || icon || instanceUUID || prefabUUID || parentUUID
 		|| !componentsChanged.empty() || !componentsRemoved.empty() || !componentOrder.empty()
 		|| !childrenChanged.empty() || !childrenAdded.empty() || !childrenRemoved.empty() || !childrenOrder.empty();
 }
@@ -135,6 +138,7 @@ void EntityDataDelta::serialize(Serializer& s) const
 	encodeField(componentsChanged, FieldId::ComponentsChanged);
 	encodeField(componentsRemoved, FieldId::ComponentsRemoved);
 	encodeField(componentOrder, FieldId::ComponentsOrder);
+	encodeOptField(icon, FieldId::Icon);
 }
 
 void EntityDataDelta::deserialize(Deserializer& s)
@@ -170,6 +174,7 @@ void EntityDataDelta::deserialize(Deserializer& s)
 	decodeField(componentsChanged, FieldId::ComponentsChanged);
 	decodeField(componentsRemoved, FieldId::ComponentsRemoved);
 	decodeField(componentOrder, FieldId::ComponentsOrder);
+	decodeOptField(icon, FieldId::Icon);
 }
 
 void EntityDataDelta::setPrefabUUID(const UUID& uuid)
@@ -205,6 +210,57 @@ const EntityData& EntityDataDelta::asEntityData() const
 const EntityDataDelta& EntityDataDelta::asEntityDataDelta() const
 {
 	return *this;
+}
+
+bool EntityDataDelta::modifiesTheSameAs(const EntityDataDelta& other) const
+{
+	if (getFieldsPresent() != other.getFieldsPresent()) {
+		return false;
+	}
+
+	if (!childrenAdded.empty() || !childrenRemoved.empty() || !childrenChanged.empty() || !childrenOrder.empty()) {
+		return false;
+	}
+
+	if (!componentsRemoved.empty() || !componentOrder.empty()) {
+		return false;
+	}
+
+	if (componentsChanged.size() != other.componentsChanged.size()) {
+		return false;
+	}
+
+	return getComponentEmptyStructure() == other.getComponentEmptyStructure();
+}
+
+static ConfigNode getEmptyConfigNodeStructure(const ConfigNode& node)
+{
+	if (node.getType() == ConfigNodeType::Map || node.getType() == ConfigNodeType::DeltaMap) {
+		ConfigNode::MapType result;
+		for (const auto& [k, v]: node.asMap()) {
+			result[k] = getEmptyConfigNodeStructure(v);
+		}
+		return result;
+	}
+	if (node.getType() == ConfigNodeType::Sequence || node.getType() == ConfigNodeType::DeltaSequence) {
+		ConfigNode::SequenceType result;
+		for (const auto& v: node.asSequence()) {
+			result.emplace_back(getEmptyConfigNodeStructure(v));
+		}
+		return result;
+	}
+	return ConfigNode();
+}
+
+std::vector<std::pair<String, ConfigNode>> EntityDataDelta::getComponentEmptyStructure() const
+{
+	std::vector<std::pair<String, ConfigNode>> result;
+
+	for (const auto& c: componentsChanged) {
+		result.emplace_back(c.first, getEmptyConfigNodeStructure(c.second));
+	}
+	
+	return result;
 }
 
 uint16_t EntityDataDelta::getFieldBit(FieldId id)
@@ -256,6 +312,7 @@ uint16_t EntityDataDelta::getFieldsPresent() const
 	checkFieldVec(componentsChanged, FieldId::ComponentsChanged);
 	checkFieldVec(componentsRemoved, FieldId::ComponentsRemoved);
 	checkFieldVec(componentOrder, FieldId::ComponentsOrder);
+	checkField(icon, FieldId::Icon);
 
 	return value;
 }

@@ -6,25 +6,29 @@ WorldSceneData::WorldSceneData(World& world)
 {
 }
 
-ISceneData::EntityNodeData WorldSceneData::getEntityNodeData(const String& id)
+ISceneData::EntityNodeData WorldSceneData::getWriteableEntityNodeData(const String& id)
+{
+	throw Exception("Not implemented", HalleyExceptions::Entity);
+}
+
+ISceneData::ConstEntityNodeData WorldSceneData::getEntityNodeData(const String& id)
 {
 	throw Exception("Not implemented", HalleyExceptions::Entity);
 }
 
 void WorldSceneData::reloadEntity(const String& id)
 {
-	// TODO
+	throw Exception("Not implemented", HalleyExceptions::Entity);
 }
 
 EntityTree WorldSceneData::getEntityTree() const
 {
-	// TODO
-	return EntityTree();
+	throw Exception("Not implemented", HalleyExceptions::Entity);
 }
 
-void WorldSceneData::reparentEntity(const String& entityId, const String& newParentId, int childIndex)
+std::pair<String, size_t> WorldSceneData::reparentEntity(const String& entityId, const String& newParentId, size_t childIndex)
 {
-	// TODO
+	throw Exception("Not implemented", HalleyExceptions::Entity);
 }
 
 bool WorldSceneData::isSingleRoot()

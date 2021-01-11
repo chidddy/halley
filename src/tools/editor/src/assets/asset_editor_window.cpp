@@ -1,16 +1,17 @@
 #include "asset_editor_window.h"
-
-
 #include "animation_editor.h"
 #include "asset_editor.h"
 #include "metadata_editor.h"
 #include "prefab_editor.h"
 #include "halley/tools/project/project.h"
+#include "src/ui/editor_ui_factory.h"
 using namespace Halley;
 
-AssetEditorWindow::AssetEditorWindow(UIFactory& factory)
+AssetEditorWindow::AssetEditorWindow(EditorUIFactory& factory, Project& project, ProjectWindow& projectWindow)
 	: UIWidget("assetEditorWindow", Vector2f(), UISizer())
 	, factory(factory)
+	, project(project)
+	, projectWindow(projectWindow)
 {
 	factory.loadUI(*this, "ui/halley/asset_editor_window");
 }
@@ -33,12 +34,16 @@ void AssetEditorWindow::onMakeUI()
 	{
 		loadAsset(loadedAsset, loadedType, false, true);
 	});
-}
 
-void AssetEditorWindow::init(Project& project, ProjectWindow& projectWindow)
-{
-	this->project = &project;
-	this->projectWindow = &projectWindow;
+	setHandle(UIEventType::ButtonClicked, "openFile", [=] (const UIEvent& event)
+	{
+		openFileExternally(getCurrentAssetPath());
+	});
+
+	setHandle(UIEventType::ButtonClicked, "showFile", [=] (const UIEvent& event)
+	{
+		showFileExternally(getCurrentAssetPath());
+	});
 }
 
 void AssetEditorWindow::setAssetSrcMode(bool assetSrcMode)
@@ -53,6 +58,8 @@ void AssetEditorWindow::loadAsset(const String& name, std::optional<AssetType> t
 		getWidget("contentListDropdownArea")->setActive(false);
 	}
 
+	bool showMetadataEditor = true;
+
 	if (loadedAsset != name || force) {
 		loadedAsset = name;
 		loadedType = type;
@@ -62,34 +69,38 @@ void AssetEditorWindow::loadAsset(const String& name, std::optional<AssetType> t
 		curEditors.clear();
 
 		if (assetSrcMode) {
-			auto assets = project->getAssetsFromFile(Path(name));
+			auto assets = project.getAssetsFromFile(Path(name));
 
 			std::sort(assets.begin(), assets.end(), [] (decltype(assets)::const_reference a, decltype(assets)::const_reference b) -> bool
 			{
 				return b.first < a.first;
 			});
 
+			for (const auto& asset: assets) {
+				if (asset.first == AssetType::Prefab || asset.first == AssetType::Scene) {
+					showMetadataEditor = false;
+				}
+			}
+
 			auto useDropdown = false;
-			std::vector<String> assetNames;
-			if (int(assets.size()) > 3) {				
+			std::vector<String> dropdownAssetIds;
+			if (assets.size() > 1) {
 				for (const auto& asset : assets) {
 					if (asset.first == AssetType::Animation) {
-						assetNames.push_back(asset.second);
+						dropdownAssetIds.push_back(asset.second);
 					}
 				}
 
-				if(!assetNames.empty())	{
-					useDropdown = true;
-					getWidget("contentListDropdownArea")->setActive(true);
-				}
+				useDropdown = dropdownAssetIds.size() > 1;
 
-				if (clearDropdown) {
-					contentListDropdown->setOptions(assetNames, 0);
+				if (useDropdown && clearDropdown) {
+					contentListDropdown->setOptions(dropdownAssetIds, 0);
 				}
 			}
+			getWidget("contentListDropdownArea")->setActive(useDropdown);
 			
 			for (auto& asset: assets) {
-				if (!useDropdown || asset.second == contentListDropdown->getSelectedOptionId() || std::find(assetNames.begin(), assetNames.end(), asset.second) == assetNames.end()) {
+				if (!useDropdown || asset.second == contentListDropdown->getSelectedOptionId() || std::find(dropdownAssetIds.begin(), dropdownAssetIds.end(), asset.second) == dropdownAssetIds.end()) {
 					createEditorTab(Path(name), asset.first, asset.second);
 				}
 			}
@@ -98,19 +109,34 @@ void AssetEditorWindow::loadAsset(const String& name, std::optional<AssetType> t
 				metadataEditor->clear();
 			} else {
 				const auto type = assets.at(0).first;
-				auto effectiveMeta = project->getImportMetadata(type, assets.at(0).second);
-				metadataEditor->setResource(*project, type, Path(name), std::move(effectiveMeta));
+				auto effectiveMeta = project.getImportMetadata(type, assets.at(0).second);
+				metadataEditor->setResource(project, type, Path(name), std::move(effectiveMeta));
 			}
 		} else {
 			metadataEditor->clear();
 			createEditorTab(Path(name), type.value(), name);
 		}
 	}
+
+	getWidget("metadataPanel")->setActive(showMetadataEditor);
 }
 
 Path AssetEditorWindow::getCurrentAssetPath() const
 {
-	return project->getAssetsSrcPath() / loadedAsset;
+	return project.getAssetsSrcPath() / loadedAsset;
+}
+
+bool AssetEditorWindow::isModified() const
+{
+	if (metadataEditor->isModified()) {
+		return true;
+	}
+	for (const auto& editor: curEditors) {
+		if (editor->isModified()) {
+			return true;
+		}
+	}
+	return false;
 }
 
 void AssetEditorWindow::onDoubleClickAsset()
@@ -135,8 +161,7 @@ void AssetEditorWindow::createEditorTab(Path filePath, AssetType type, const Str
 		auto n = content->getNumberOfPages();
 		content->addPage();
 		content->getPage(n)->add(editor, 1);
-		auto typeSprite = Sprite().setImage(factory.getResources(), Path("ui") / "assetTypes" / toString(type) + ".png");
-		const auto image = std::make_shared<UIImage>(typeSprite);
+		const auto image = std::make_shared<UIImage>(factory.makeAssetTypeIcon(type));
 		const auto text = std::make_shared<UILabel>(name + "_" + toString(type) + ":label", contentList->getStyle().getTextRenderer("label"), LocalisedString::fromUserString(name));
 		
 		auto item = std::make_shared<UISizer>();
@@ -144,6 +169,7 @@ void AssetEditorWindow::createEditorTab(Path filePath, AssetType type, const Str
 		item->add(text, 1.0f, {}, UISizerAlignFlags::CentreVertical);
 
 		contentList->addItem(toString(n), item);
+		contentList->setActive(contentList->getCount() > 1);
 		curEditors.push_back(editor);
 	}
 }
@@ -151,13 +177,26 @@ void AssetEditorWindow::createEditorTab(Path filePath, AssetType type, const Str
 std::shared_ptr<AssetEditor> AssetEditorWindow::makeEditor(Path filePath, AssetType type, const String& name)
 {
 	switch (type) {
-	//case AssetType::Sprite:
+	case AssetType::Sprite:
+		return {};
 	case AssetType::Animation:
 	case AssetType::Texture:
-		return std::make_shared<AnimationEditor>(factory, project->getGameResources(), type, *project, *metadataEditor);
+		return std::make_shared<AnimationEditor>(factory, project.getGameResources(), type, project, *metadataEditor);
 	case AssetType::Prefab:
 	case AssetType::Scene:
-		return std::make_shared<PrefabEditor>(factory, project->getGameResources(), type, *project, *projectWindow);
+		return std::make_shared<PrefabEditor>(factory, project.getGameResources(), type, project, projectWindow);
 	}
 	return {};
+}
+
+void AssetEditorWindow::openFileExternally(const Path& path)
+{
+	auto cmd = "start \"\" \"" + path.toString().replaceAll("/", "\\") + "\"";
+	system(cmd.c_str());
+}
+
+void AssetEditorWindow::showFileExternally(const Path& path)
+{
+	auto cmd = "explorer.exe /select,\"" + path.toString().replaceAll("/", "\\") + "\"";
+	system(cmd.c_str());
 }

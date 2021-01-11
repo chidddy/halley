@@ -7,7 +7,7 @@
 #include "halley/tools/project/project.h"
 #include "src/assets/assets_browser.h"
 #include "src/scene/entity_editor.h"
-#include "src/scene/scene_editor_tabs.h"
+#include "src/scene/choose_asset_window.h"
 
 namespace Halley {
     class UIFactory;
@@ -17,14 +17,19 @@ namespace Halley {
 
     class ProjectWindow final : public UIWidget, public IDynamicLibraryListener, public Project::IAssetLoadListener {
     public:
-        ProjectWindow(UIFactory& factory, HalleyEditor& editor, Project& project, Resources& resources, const HalleyAPI& api);
+        ProjectWindow(EditorUIFactory& factory, HalleyEditor& editor, Project& project, Resources& resources, const HalleyAPI& api);
     	~ProjectWindow();
 
         void setPage(EditorTabs tab);
         LocalisedString setCustomPage(const String& pageId);
-        void openPrefab(const String& assetId, AssetType assetType);
+    	void openFile(const String& assetId);
+    	void openAsset(AssetType type, const String& assetId);
+
+    	const HalleyAPI& getAPI() const;
 
     	EditorTaskSet& getTasks() const;
+
+    	void reloadProject();
 
     protected:
 		void onUnloadDLL() override;
@@ -33,11 +38,12 @@ namespace Halley {
         void onAssetsLoaded() override;
 
         void update(Time t, bool moved) override;
+        bool onKeyPress(KeyboardKeyPress key) override;
     	
     private:
 		constexpr static int numOfStandardTools = 6;
 
-    	UIFactory& factory;
+    	EditorUIFactory& factory;
         HalleyEditor& editor;
     	Project& project;
     	Resources& resources;
@@ -57,8 +63,8 @@ namespace Halley {
     	bool hasDLL = false;
 
     	std::shared_ptr<AssetsBrowser> assetEditorWindow;
-        std::shared_ptr<SceneEditorTabs> sceneEditorTabs;
         std::shared_ptr<ConsoleWindow> consoleWindow;
+        std::shared_ptr<ChooseImportAssetWindow> assetFinder;
 
         void makeUI();
     	void makeToolbar();
@@ -67,5 +73,7 @@ namespace Halley {
     	void tryLoadCustomUI();
     	bool loadCustomUI();
 		void destroyCustomUI();
+
+    	void openAssetFinder();
     };
 }

@@ -1,5 +1,7 @@
 #include "prefab_editor.h"
 
+
+#include "src/scene/scene_editor_window.h"
 #include "src/ui/project_window.h"
 using namespace Halley;
 
@@ -8,7 +10,6 @@ PrefabEditor::PrefabEditor(UIFactory& factory, Resources& resources, AssetType t
 	, project(project)
 	, projectWindow(projectWindow)
 {
-	setupWindow();
 }
 
 void PrefabEditor::reload()
@@ -17,41 +18,41 @@ void PrefabEditor::reload()
 
 void PrefabEditor::onDoubleClick()
 {
-	open();
+}
+
+bool PrefabEditor::isModified()
+{
+	return window && window->isModified();
 }
 
 void PrefabEditor::update(Time t, bool moved)
 {
-	updateButton();
+	if (pendingLoad && project.isDLLLoaded()) {
+		pendingLoad = false;
+		open();
+	}
 }
 
 std::shared_ptr<const Resource> PrefabEditor::loadResource(const String& assetId)
 {
+	open();
 	return {};
-}
-
-void PrefabEditor::setupWindow()
-{
-	add(factory.makeUI("ui/halley/prefab_editor"), 1);
-
-	setHandle(UIEventType::ButtonClicked, "open", [=](const UIEvent& event)
-	{
-		open();
-	});
-
-	updateButton();
 }
 
 void PrefabEditor::open()
 {
-	if (project.isDLLLoaded()) {
-		projectWindow.openPrefab(assetId, assetType);
+	if (!project.isDLLLoaded()) {
+		pendingLoad = true;
+		return;
 	}
-}
-
-void PrefabEditor::updateButton()
-{
-	const bool enabled = project.isDLLLoaded();
-	getWidgetAs<UIButton>("open")->setActive(enabled);
-	getWidgetAs<UIButton>("openDisabled")->setActive(!enabled);
+	
+	if (!window) {
+		window = std::make_shared<SceneEditorWindow>(factory, project, projectWindow.getAPI(), projectWindow);
+		add(window, 1);
+	}
+	if (assetType == AssetType::Scene) {
+		window->loadScene(assetId);
+	} else if (assetType == AssetType::Prefab) {
+		window->loadPrefab(assetId);
+	}
 }

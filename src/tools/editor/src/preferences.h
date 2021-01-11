@@ -12,6 +12,7 @@ namespace Halley
 		Preferences();
 		void setEditorVersion(String editorVersion);
 
+		void loadDefaults();
 		ConfigNode save() const;
 		void load(const ConfigNode& config);
 
@@ -29,6 +30,9 @@ namespace Halley
 		bool isPlatformDisabled(const String& name) const;
 		void setPlatformDisabled(const String& name, bool disabled);
 
+		const String& getColourScheme() const;
+		void setColourScheme(String colourScheme);
+
 		void loadEditorPreferences(const Preferences& preferences);
 
 	private:
@@ -42,5 +46,7 @@ namespace Halley
 		WindowState windowState = WindowState::Normal;
 
 		std::vector<String> disabledPlatforms;
+
+		String colourScheme;
 	};
 }

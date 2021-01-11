@@ -43,21 +43,36 @@ void EditorTask::setProgress(float p, String label)
 	progressLabel = label;
 }
 
-void EditorTask::addError(const String& message)
+void EditorTask::logDev(String message)
 {
-	Logger::logError("Error in task \"" + name + "\": " + message);
-
-	std::lock_guard<std::mutex> lock(mutex);
-	error = true;
-	if (!errorMsg.isEmpty()) {
-		errorMsg += "\n";
-	}
-	errorMsg += message;
+	log(LoggerLevel::Dev, std::move(message));
 }
 
-bool EditorTask::isCancelled() const
+void EditorTask::logInfo(String message)
 {
-	return cancelled;
+	log(LoggerLevel::Info, std::move(message));
+}
+
+void EditorTask::logWarning(String message)
+{
+	log(LoggerLevel::Warning, std::move(message));
+}
+
+void EditorTask::logError(String message)
+{
+	log(LoggerLevel::Error, std::move(message));
+}
+
+void EditorTask::log(LoggerLevel level, String message)
+{
+	Logger::log(level, name + "> " + message);
+
+	std::lock_guard<std::mutex> lock(mutex);
+	if (level == LoggerLevel::Error) {
+		error = true;
+	}
+	++numMessages;
+	messageLog.emplace_back(level, std::move(message));
 }
 
 bool EditorTask::hasError() const
@@ -65,9 +80,52 @@ bool EditorTask::hasError() const
 	return error;
 }
 
-const String& EditorTask::getError() const
+size_t EditorTask::getNumMessages() const
 {
-	return errorMsg;
+	return numMessages.load();
+}
+
+std::vector<std::pair<LoggerLevel, String>> EditorTask::copyMessagesHead(size_t max, std::optional<LoggerLevel> filter) const
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	std::vector<std::pair<LoggerLevel, String>> result;
+	for (const auto& msg: messageLog) {
+		if (!filter || msg.first == filter.value()) {
+			result.push_back(msg);
+			if (result.size() >= max) {
+				break;
+			}
+		}
+	}
+	
+	return result;
+}
+
+std::vector<std::pair<LoggerLevel, String>> EditorTask::copyMessagesTail(size_t max, std::optional<LoggerLevel> filter) const
+{
+	std::vector<std::pair<LoggerLevel, String>> result;
+
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+		for (auto iter = messageLog.rbegin(); iter != messageLog.rend(); ++iter) {
+			if (!filter || iter->first == filter.value()) {
+				result.push_back(*iter);
+				if (result.size() >= max) {
+					break;
+				}
+			}
+		}
+	}
+
+	std::reverse(result.begin(), result.end());
+	
+	return result;
+}
+
+bool EditorTask::isCancelled() const
+{
+	return cancelled;
 }
 
 bool EditorTask::hasPendingTasks() const
@@ -149,7 +207,6 @@ void EditorTaskAnchor::update(float time)
 		if (done) {
 			status = EditorTaskStatus::Done;
 			error = task->hasError();
-			errorMsg = task->getError();
 			progress = 1;
 			progressLabel = "";
 		} else {
@@ -205,9 +262,19 @@ bool EditorTaskAnchor::hasError() const
 	return error;
 }
 
-const String& EditorTaskAnchor::getError() const
+size_t EditorTaskAnchor::getNumMessages() const
 {
-	return errorMsg;
+	return task->getNumMessages();
+}
+
+std::vector<std::pair<LoggerLevel, String>> EditorTaskAnchor::copyMessagesHead(size_t max, std::optional<LoggerLevel> filter) const
+{
+	return task->copyMessagesHead(max, filter);
+}
+
+std::vector<std::pair<LoggerLevel, String>> EditorTaskAnchor::copyMessagesTail(size_t max, std::optional<LoggerLevel> filter) const
+{
+	return task->copyMessagesTail(max, filter);
 }
 
 Vector<EditorTaskAnchor> EditorTaskAnchor::getContinuations()

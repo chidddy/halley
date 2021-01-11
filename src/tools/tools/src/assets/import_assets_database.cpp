@@ -4,7 +4,7 @@
 #include "halley/resources/resource_data.h"
 #include "halley/tools/file/filesystem.h"
 
-constexpr static int currentAssetVersion = 80;
+constexpr static int currentAssetVersion = 82;
 
 using namespace Halley;
 
@@ -252,15 +252,19 @@ Path ImportAssetsDatabase::getPrimaryInputFile(AssetType type, const String& ass
 	return {};
 }
 
-bool ImportAssetsDatabase::needsImporting(const ImportAssetsDatabaseEntry& asset) const
+bool ImportAssetsDatabase::needsImporting(const ImportAssetsDatabaseEntry& asset, bool includeFailed) const
 {
 	std::lock_guard<std::mutex> lock(mutex);
 	
 	// Check if it failed loading last time
 	auto iter = assetsFailed.find(asset.assetId);
-	bool failed = iter != assetsFailed.end();
+	const bool failed = iter != assetsFailed.end();
+	if (failed && includeFailed) {
+		return true;
+	}
+	
+	// Check if this was imported before
 	if (!failed) {
-		// No failures, check if this was imported before
 		iter = assetsImported.find(asset.assetId);
 		if (iter == assetsImported.end()) {
 			// Asset didn't even exist before
@@ -269,7 +273,7 @@ bool ImportAssetsDatabase::needsImporting(const ImportAssetsDatabaseEntry& asset
 	}
 
 	// At this point, iter points to the failed one if it failed, or the the old successful one if it didn't.
-	auto& oldAsset = iter->second.asset;
+	const auto& oldAsset = iter->second.asset;
 
 	// Input directory changed?
 	if (asset.srcDir != oldAsset.srcDir) {
@@ -283,7 +287,7 @@ bool ImportAssetsDatabase::needsImporting(const ImportAssetsDatabaseEntry& asset
 
 	// Any of the input files changed?
 	// Note: We don't have to check old files on new input, because the size matches and all entries matched.
-	for (auto& i: asset.inputFiles) {
+	for (const auto& i: asset.inputFiles) {
 		auto result = std::find_if(oldAsset.inputFiles.begin(), oldAsset.inputFiles.end(), [&](const AssetPath& entry) { return entry.getDataPath() == i.getDataPath(); });
 		if (result == oldAsset.inputFiles.end()) {
 			// File wasn't there before
@@ -295,7 +299,7 @@ bool ImportAssetsDatabase::needsImporting(const ImportAssetsDatabaseEntry& asset
 	}
 
 	// Any of the additional input files changed?
-	for (auto& i: oldAsset.additionalInputFiles) {
+	for (const auto& i: oldAsset.additionalInputFiles) {
 		if (!FileSystem::exists(i.first)) {
 			// File removed
 			return true;
@@ -307,8 +311,8 @@ bool ImportAssetsDatabase::needsImporting(const ImportAssetsDatabaseEntry& asset
 
 	// Have any of the output files gone missing?
 	if (!failed) {
-		for (auto& o: oldAsset.outputFiles) {
-			for (auto& version: o.platformVersions) {
+		for (const auto& o: oldAsset.outputFiles) {
+			for (const auto& version: o.platformVersions) {
 				if (!FileSystem::exists(directory / version.second.filepath)) {
 					return true;
 				}

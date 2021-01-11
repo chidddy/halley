@@ -1,0 +1,40 @@
+name: Sakura
+base: colour_schemes/base_light
+colours:
+  background0: "#FFECF7"
+  background1: "#FFF0F9"
+  backgroundLogo: "#FFE8F5"
+
+  ui_controlNormal: "#DD6CB6"
+  ui_controlDown: "#C4398F"
+  ui_controlHover: "#E796CA"
+  ui_controlDisabled: "#D7AAC6"
+  
+  ui_buttonNormal: "#FFC6E7"
+  ui_buttonDown: "#E281C0"
+  ui_buttonHover: "#FFD9EF"
+  ui_buttonDisabled: "#D7AAC6"
+
+  ui_inputNormal: "#DD6CB6"
+  ui_inputDown: "#C4398F"
+  ui_inputHover: "#E796CA"
+  ui_inputDisabled: "#D7AAC6"
+
+  ui_listBackground: "#EEB5DA"
+  ui_listSelected: "#FFFFFF"
+  ui_listHover: "#FFC6E7"
+  ui_listDrag: "#FFC6E780"
+
+  ui_disabledText: "#8B747E"
+  
+  ui_scrollBackground: "#F8E0EF"
+  ui_backgroundBox: "#F8E0EF"
+  ui_popupWindow: "#FFC6E7"
+  ui_staticBox: "#FFC6E7"
+  ui_staticBoxSubdue: "#F9ACD5"
+
+  ui_debugConsole: "#DD6CB6C0"
+
+  ui_selectedTextAlt: "#9C2E94"
+  ui_unselectedTextAlt: "#9C2E94"
+  ui_disabledTextAlt: "#774077"

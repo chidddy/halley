@@ -15,7 +15,6 @@ std::unique_ptr<Prefab> Prefab::loadResource(ResourceLoader& loader)
 	
 	auto prefab = std::make_unique<Prefab>();
 	Deserializer::fromBytes(*prefab, data->getSpan());
-	prefab->loadEntityData();
 
 	return prefab;
 }
@@ -30,30 +29,61 @@ void Prefab::reload(Resource&& resource)
 
 void Prefab::makeDefault()
 {
-	config.getRoot() = ConfigNode(ConfigNode::MapType());
-	loadEntityData();
+	entityData.setInstanceUUID(UUID::generate());
 }
 
 void Prefab::serialize(Serializer& s) const
 {
-	s << config;
+	s << entityData;
+	s << gameData;
 }
 
 void Prefab::deserialize(Deserializer& s)
 {
-	s >> config;
+	s >> entityData;
+	s >> gameData;
+	entityData.setSceneRoot(isScene());
 }
 
 void Prefab::parseYAML(gsl::span<const gsl::byte> yaml)
 {
+	ConfigFile config;
 	YAMLConvert::parseConfig(config, yaml);
+	parseConfigNode(std::move(config.getRoot()));
 }
 
 String Prefab::toYAML() const
 {
 	YAMLConvert::EmitOptions options;
-	options.mapKeyOrder = {{ "name", "uuid", "components", "children" }};
-	return YAMLConvert::generateYAML(config, options);
+	options.mapKeyOrder = {{ "name", "icon", "uuid", "prefab", "components", "children" }};
+	return YAMLConvert::generateYAML(toConfigNode(), options);
+}
+
+void Prefab::parseConfigNode(ConfigNode node)
+{
+	if (node.getType() == ConfigNodeType::Map && node.hasKey("entity")) {
+		entityData = makeEntityData(node["entity"]);
+		gameData.getRoot() = std::move(node["game"]);
+	} else {
+		// Legacy
+		entityData = makeEntityData(node);
+		gameData.getRoot() = ConfigNode();
+	}
+
+	entityData.setSceneRoot(isScene());
+}
+
+ConfigNode Prefab::toConfigNode() const
+{
+	ConfigNode::MapType result;
+	result["entity"] = entityToConfigNode();
+	result["game"] = ConfigNode(gameData.getRoot());
+	return result;
+}
+
+ConfigNode Prefab::entityToConfigNode() const
+{
+	return entityData.toConfigNode(false);
 }
 
 bool Prefab::isScene() const
@@ -61,25 +91,38 @@ bool Prefab::isScene() const
 	return false;
 }
 
-const EntityData& Prefab::getEntityData() const
+EntityData& Prefab::getEntityData()
 {
-	if (entityDatas.size() != 1) {
-		throw Exception("Prefab \"" + getAssetId() + "\" does not contain exactly one element.", HalleyExceptions::Entity);
-	}
-	return entityDatas[0];
+	return entityData;
 }
 
-const std::vector<EntityData>& Prefab::getEntityDatas() const
+const EntityData& Prefab::getEntityData() const
 {
-	return entityDatas;
+	return entityData;
+}
+
+gsl::span<const EntityData> Prefab::getEntityDatas() const
+{
+	return gsl::span<const EntityData>(&entityData, 1);
+}
+
+gsl::span<EntityData> Prefab::getEntityDatas()
+{
+	return gsl::span<EntityData>(&entityData, 1);
 }
 
 std::map<UUID, const EntityData*> Prefab::getEntityDataMap() const
 {
 	std::map<UUID, const EntityData*> dataMap;
-	for (const auto& data: entityDatas) {
-		dataMap[data.getInstanceUUID()] = &data;
+
+	if (isScene()) {
+		for (const auto& data: entityData.getChildren()) {
+			dataMap[data.getInstanceUUID()] = &data;
+		}		
+	} else {
+		dataMap[entityData.getInstanceUUID()] = &entityData;
 	}
+	
 	return dataMap;
 }
 
@@ -98,32 +141,76 @@ const std::set<UUID>& Prefab::getEntitiesRemoved() const
 	return deltas.entitiesRemoved;
 }
 
-const ConfigNode& Prefab::getRoot() const
+void Prefab::setGameData(const String& key, ConfigNode data)
 {
-	return config.getRoot();
+	gameData.getRoot().ensureType(ConfigNodeType::Map);
+	gameData.getRoot()[key] = std::move(data);
 }
 
-ConfigNode& Prefab::getRoot()
+ConfigNode& Prefab::getGameData(const String& key)
 {
-	return config.getRoot();
+	gameData.getRoot().ensureType(ConfigNodeType::Map);
+	auto& map = gameData.getRoot().asMap();
+	const auto iter = map.find(key);
+	if (iter == map.end()) {
+		auto [newIter, inserted] = map.insert(std::make_pair(key, ConfigNode::MapType()));
+		return newIter->second;
+	} else {
+		return iter->second;
+	}
 }
 
-void Prefab::loadEntityData()
+const ConfigNode* Prefab::tryGetGameData(const String& key) const
 {
-	entityDatas = makeEntityDatas();
+	if (gameData.getRoot().getType() != ConfigNodeType::Map) {
+		return nullptr;
+	}
+
+	auto& map = gameData.getRoot().asMap();
+	const auto iter = map.find(key);
+	if (iter == map.end()) {
+		return nullptr;
+	} else {
+		return &iter->second;
+	}
 }
 
-std::vector<EntityData> Prefab::makeEntityDatas() const
+String Prefab::getPrefabName() const
 {
-	std::vector<EntityData> result;
-	result.emplace_back(config.getRoot(), true);
-	return result;
+	return entityData.getName();
+}
+
+String Prefab::getPrefabIcon() const
+{
+	return entityData.getIcon();
+}
+
+EntityData* Prefab::findEntityData(const UUID& uuid)
+{
+	if (!uuid.isValid()) {
+		if (isScene()) {
+			return &entityData;
+		} else {
+			return nullptr;
+		}
+	}
+	return entityData.tryGetInstanceUUID(uuid);
+}
+
+std::shared_ptr<Prefab> Prefab::clone() const
+{
+	return std::make_shared<Prefab>(*this);
+}
+
+EntityData Prefab::makeEntityData(const ConfigNode& node) const
+{
+	return EntityData(node, true);
 }
 
 Prefab::Deltas Prefab::generatePrefabDeltas(const Prefab& newPrefab) const
 {
 	Deltas result;
-	result.entitiesModified[entityDatas.at(0).getPrefabUUID()] = EntityDataDelta(entityDatas.at(0), newPrefab.entityDatas.at(0));
+	result.entitiesModified[entityData.getPrefabUUID()] = EntityDataDelta(entityData, newPrefab.entityData);
 	return result;
 }
 
@@ -136,7 +223,6 @@ std::unique_ptr<Scene> Scene::loadResource(ResourceLoader& loader)
 	
 	auto scene = std::make_unique<Scene>();
 	Deserializer::fromBytes(*scene, data->getSpan());
-	scene->loadEntityData();
 
 	return scene;
 }
@@ -156,17 +242,45 @@ void Scene::reload(Resource&& resource)
 
 void Scene::makeDefault()
 {
-	config.getRoot() = ConfigNode(ConfigNode::SequenceType());
-	loadEntityData();
+	
 }
 
-std::vector<EntityData> Scene::makeEntityDatas() const
+gsl::span<const EntityData> Scene::getEntityDatas() const
 {
-	const auto& seq = config.getRoot().asSequence();
-	std::vector<EntityData> result;
-	result.reserve(seq.size());
+	return entityData.getChildren();
+}
+
+gsl::span<EntityData> Scene::getEntityDatas()
+{
+	return entityData.getChildren();
+}
+
+String Scene::getPrefabName() const
+{
+	return "Scene";
+}
+
+std::shared_ptr<Prefab> Scene::clone() const
+{
+	return std::make_shared<Scene>(*this);
+}
+
+ConfigNode Scene::entityToConfigNode() const
+{
+	ConfigNode::SequenceType result;
+	for (auto& c: entityData.getChildren()) {
+		result.emplace_back(c.toConfigNode(false));
+	}
+	return ConfigNode(std::move(result));
+}
+
+EntityData Scene::makeEntityData(const ConfigNode& node) const
+{
+	EntityData result;
+	const auto& seq = node.asSequence();
+	result.getChildren().reserve(seq.size());
 	for (const auto& s: seq) {
-		result.emplace_back(s, false);
+		result.getChildren().emplace_back(s, false);
 	}
 	return result;
 }
@@ -175,14 +289,14 @@ Scene::Deltas Scene::generateSceneDeltas(const Scene& newScene) const
 {
 	Deltas result;
 	
-	// Move old entity data
+	// Mapping of old entity data
 	std::map<UUID, const EntityData*> oldDatas;
-	for (const auto& data: entityDatas) {
+	for (const auto& data: entityData.getChildren()) {
 		oldDatas[data.getInstanceUUID()] = &data;
 	}
 
 	// Modified
-	for (const auto& data: newScene.entityDatas) {
+	for (const auto& data: newScene.entityData.getChildren()) {
 		const auto uuid = data.getInstanceUUID();
 		const auto oldIter = oldDatas.find(uuid);
 		if (oldIter != oldDatas.end()) {

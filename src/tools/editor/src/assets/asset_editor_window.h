@@ -3,6 +3,7 @@
 #include "halley/ui/widgets/ui_paged_pane.h"
 
 namespace Halley {
+	class EditorUIFactory;
 	class Project;
 	class AssetEditor;
 	class MetadataEditor;
@@ -10,10 +11,9 @@ namespace Halley {
 	
 	class AssetEditorWindow : public UIWidget {
     public:
-		explicit AssetEditorWindow(UIFactory& factory);
+		explicit AssetEditorWindow(EditorUIFactory& factory, Project& project, ProjectWindow& projectWindow);
 
 		void onMakeUI() override;
-		void init(Project& project, ProjectWindow& projectWindow);
 		void setAssetSrcMode(bool assetSrcMode);
 		void onDoubleClickAsset();
 		void refreshAssets();
@@ -22,10 +22,12 @@ namespace Halley {
 
 		Path getCurrentAssetPath() const;
 
+		bool isModified() const;
+
 	private:
-		UIFactory& factory;
-		Project* project;
-		ProjectWindow* projectWindow;
+		EditorUIFactory& factory;
+		Project& project;
+		ProjectWindow& projectWindow;
 		std::shared_ptr<MetadataEditor> metadataEditor;
 		bool assetSrcMode = false;
 		
@@ -37,7 +39,12 @@ namespace Halley {
 		std::shared_ptr<UIPagedPane> content;
 		std::vector<std::shared_ptr<AssetEditor>> curEditors;
 
+		bool modified = false;
+
 		std::shared_ptr<AssetEditor> makeEditor(Path filePath, AssetType type, const String& name);
 		void createEditorTab(Path filePath, AssetType type, const String& name);
+
+		void openFileExternally(const Path& path);
+		void showFileExternally(const Path& path);
 	};
 }

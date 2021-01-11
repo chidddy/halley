@@ -10,10 +10,38 @@
 #include <map>
 #include <vector>
 
-namespace Halley
-{
-    class Serializer;
-    class Deserializer;
+#include "halley/utils/type_traits.h"
+
+namespace Halley {
+	class Serializer;
+	class Deserializer;
+	class ConfigNode;
+
+	template<typename T>
+	struct HasToConfigNode
+	{
+	private:
+		typedef std::true_type yes;
+		typedef std::false_type no;
+		template<typename U> static auto test(int) -> decltype(std::declval<U>().toConfigNode(), yes());
+		template<typename> static no test(...);
+	 
+	public:
+		static constexpr bool value = std::is_same<decltype(test<T>(0)),yes>::value;
+	};
+
+	template<typename T>
+	struct HasConfigNodeConstructor
+	{
+	private:
+		typedef std::true_type yes;
+		typedef std::false_type no;
+		template<typename U> static auto test(int) -> decltype(U(std::declval<ConfigNode>()), yes());
+		template<typename> static no test(...);
+	 
+	public:
+		static constexpr bool value = std::is_same<decltype(test<T>(0)),yes>::value;
+	};
 
     enum class ConfigNodeType
     {

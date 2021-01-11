@@ -5,6 +5,8 @@
 #include <memory>
 #include <map>
 #include <functional>
+
+#include "ui_colour_scheme.h"
 #include "ui_input.h"
 #include "halley/text/i18n.h"
 
@@ -24,7 +26,7 @@ namespace Halley
 	public:
 		using WidgetFactory = std::function<std::shared_ptr<UIWidget>(const ConfigNode&)>;
 
-		UIFactory(const HalleyAPI& api, Resources& resources, const I18N& i18n, std::shared_ptr<UIStyleSheet> styleSheet);
+		UIFactory(const HalleyAPI& api, Resources& resources, const I18N& i18n, std::shared_ptr<UIStyleSheet> styleSheet = {}, std::shared_ptr<const UIColourScheme> colourScheme = {});
 		UIFactory(const UIFactory& other) = delete;
 		UIFactory(UIFactory&& other) = delete;
 		virtual ~UIFactory();
@@ -56,6 +58,11 @@ namespace Halley
 
 		const I18N& getI18N() const;
 
+		void setStyleSheet(std::shared_ptr<UIStyleSheet> styleSheet);
+		std::shared_ptr<const UIColourScheme> getColourScheme() const;
+
+		void update();
+
 	protected:
 		struct ParsedOption {
 			String id;
@@ -72,6 +79,7 @@ namespace Halley
 		const HalleyAPI& api;
 		Resources& resources;
 		const I18N& i18n;
+		std::shared_ptr<const UIColourScheme> colourScheme;
 
 		std::shared_ptr<UIWidget> makeWidget(const ConfigNode& node);
 		std::shared_ptr<UISizer> makeSizerPtr(const ConfigNode& node);
@@ -94,6 +102,7 @@ namespace Halley
 		std::shared_ptr<UIWidget> makeDropdown(const ConfigNode& node);
 		std::shared_ptr<UIWidget> makeCheckbox(const ConfigNode& node);
 		std::shared_ptr<UIWidget> makeImage(const ConfigNode& node);
+		std::shared_ptr<UIWidget> makeMultiImage(const ConfigNode& node);
 		std::shared_ptr<UIWidget> makeAnimation(const ConfigNode& node);
 		std::shared_ptr<UIWidget> makeScrollPane(const ConfigNode& node);
 		std::shared_ptr<UIWidget> makeScrollBar(const ConfigNode& node);
@@ -112,6 +121,9 @@ namespace Halley
 
 		bool hasCondition(const String& condition) const;
 		bool resolveConditions(const ConfigNode& node) const;
+
+		Colour4f getColour(const String& key) const;
+		void loadDefaultColourScheme();
 
 	private:
 		std::shared_ptr<UIStyleSheet> styleSheet;

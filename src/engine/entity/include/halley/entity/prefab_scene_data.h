@@ -7,10 +7,11 @@ namespace Halley {
     public:
     	PrefabSceneData(Prefab& prefab, std::shared_ptr<EntityFactory> factory, World& world, Resources& gameResources);
 
-        EntityNodeData getEntityNodeData(const String& id) override;
+        EntityNodeData getWriteableEntityNodeData(const String& id) override;
+        ConstEntityNodeData getEntityNodeData(const String& id) override;
         void reloadEntity(const String& id) override;
         EntityTree getEntityTree() const override;
-        void reparentEntity(const String& entityId, const String& newParentId, int childIndex) override;
+        std::pair<String, size_t> reparentEntity(const String& entityId, const String& newParentId, size_t childIndex) override;
         bool isSingleRoot() override;
     	
     private:
@@ -19,18 +20,24 @@ namespace Halley {
         World& world;
     	Resources& gameResources;
 
-    	void reloadEntity(const String& id, ConfigNode* data);
-        void fillEntityTree(const ConfigNode& node, EntityTree& tree) const;
-    	void fillPrefabChildren(const ConfigNode& node, std::vector<String>& dst) const;
+    	struct EntityAndParent {
+    		EntityData* entity = nullptr;
+    		EntityData* parent = nullptr;
+    		size_t childIdx = 0;
+    	};
 
-        ConfigNode::SequenceType& findChildListFor(const String& id);
-        static ConfigNode* doFindChildListFor(ConfigNode& node, const String& id);
-    	
-        static ConfigNode* findEntity(ConfigNode& node, const String& id);
-        static std::pair<ConfigNode*, ConfigNode*> findEntityAndParent(ConfigNode& node, ConfigNode* previous, const String& id);
+    	void reloadEntity(const String& id, EntityData* data);
+        void fillEntityTree(const EntityData& node, EntityTree& tree) const;
+    	void fillPrefabChildren(const EntityData& node, std::vector<String>& dst) const;
 
-        static void addChild(ConfigNode::SequenceType& parent, int index, ConfigNode child);
-        static ConfigNode removeChild(ConfigNode::SequenceType& parent, const String& childId);
-        static void moveChild(ConfigNode::SequenceType& parent, const String& childId, int targetIndex);
+        EntityData& findEntity(const String& id);
+
+    	static EntityData* findEntity(gsl::span<EntityData> node, const String& id);
+    	static EntityAndParent findEntityAndParent(gsl::span<EntityData> node, EntityData* previous, size_t idx, const String& id);
+        static EntityAndParent findEntityAndParent(EntityData& node, EntityData* previous, size_t idx, const String& id);
+
+        static void addChild(EntityData& parent, int index, EntityData child);
+        static EntityData removeChild(EntityData& parent, const String& childId);
+        static void moveChild(EntityData& parent, const String& childId, int targetIndex);
     };
 }

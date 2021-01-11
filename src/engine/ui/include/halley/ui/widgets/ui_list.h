@@ -25,7 +25,7 @@ namespace Halley {
 
 		UIStyle getStyle() const;
 
-		void addTextItem(const String& id, const LocalisedString& label, float maxWidth = -1, bool centre = false);
+		void addTextItem(const String& id, LocalisedString label, float maxWidth = -1, bool centre = false);
 		void addImage(const String& id, std::shared_ptr<UIImage> element, float proportion = 0, Vector4f border = {}, int fillFlags = UISizerFillFlags::Fill, std::optional<UIStyle> styleOverride = {});
 		void addItem(const String& id, std::shared_ptr<IUIElement> element, float proportion = 0, Vector4f border = {}, int fillFlags = UISizerFillFlags::Fill, std::optional<UIStyle> styleOverride = {});
 		std::optional<int> removeItem(const String& id);
@@ -58,10 +58,14 @@ namespace Halley {
 
 		void setUniformSizedItems(bool enabled);
 
+        void setScrollToSelection(bool enabled);
+
 		bool ignoreClip() const override;
 
 		bool canReceiveFocus() const override;
 		void setFocusable(bool focusable);
+
+		std::shared_ptr<UILabel> makeLabel(String id, LocalisedString label, float maxWidth = 0) const;
 
 	protected:
 		void draw(UIPainter& painter) const override;
@@ -94,6 +98,7 @@ namespace Halley {
 		bool uniformSizedItems = false;
 		bool singleClickAccept = true;
 		bool focusable = true;
+		bool scrollToSelection = true;
 
 		void onItemClicked(UIListItem& item);
 		void onItemDoubleClicked(UIListItem& item);

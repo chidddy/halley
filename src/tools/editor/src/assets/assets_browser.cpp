@@ -12,22 +12,24 @@
 #include "prefab_editor.h"
 #include "halley/tools/file/filesystem.h"
 #include "halley/file_formats/yaml_convert.h"
+#include "src/ui/editor_ui_factory.h"
 
 using namespace Halley;
 
-AssetsBrowser::AssetsBrowser(UIFactory& factory, Project& project, ProjectWindow& projectWindow)
+AssetsBrowser::AssetsBrowser(EditorUIFactory& factory, Project& project, ProjectWindow& projectWindow)
 	: UIWidget("assets_editor", {}, UISizer())
 	, factory(factory)
 	, project(project)
 	, projectWindow(projectWindow)
 	, curSrcPath(".")
+	, fuzzyMatcher(false, 100)
 {
 	loadResources();
 	makeUI();
 	setAssetSrcMode(true);
 }
 
-void AssetsBrowser::showAsset(AssetType type, const String& assetId)
+void AssetsBrowser::openAsset(AssetType type, const String& assetId)
 {
 	getWidgetAs<UITextInput>("assetSearch")->setText("");
 	Path target;
@@ -37,15 +39,16 @@ void AssetsBrowser::showAsset(AssetType type, const String& assetId)
 	} else {
 		target = project.getImportAssetsDatabase().getPrimaryInputFile(type, assetId);
 	}
-	showFile(target);
+	openFile(target);
 }
 
-void AssetsBrowser::showFile(const Path& path)
+void AssetsBrowser::openFile(const Path& path)
 {
 	if (!path.isEmpty()) {
 		curSrcPath = path.parentPath();
 		refreshList();
 		assetList->setSelectedOptionId(path.toString());
+		loadAsset(path.toString(), true);
 	}
 }
 
@@ -63,9 +66,9 @@ void AssetsBrowser::makeUI()
 
 	assetList = getWidgetAs<UIList>("assetList");
 	assetList->setSingleClickAccept(false);
-	assetEditor = getWidgetAs<AssetEditorWindow>("assetEditorWindow");
-	assetEditor->init(project, projectWindow);
-	getWidget("metadataPanel")->setActive(false);
+
+	assetTabs = std::make_shared<AssetBrowserTabs>(factory, project, projectWindow);
+	getWidget("assetEditorContainer")->add(assetTabs, 1);
 
 	setHandle(UIEventType::ListSelectionChanged, "assetType", [=] (const UIEvent& event)
 	{
@@ -97,14 +100,9 @@ void AssetsBrowser::makeUI()
 		removeAsset();
 	});
 
-	setHandle(UIEventType::ButtonClicked, "openFile", [=] (const UIEvent& event)
+	setHandle(UIEventType::ButtonClicked, "collapseButton", [=] (const UIEvent& event)
 	{
-		openFileExternally(getCurrentAssetPath());
-	});
-
-	setHandle(UIEventType::ButtonClicked, "showFile", [=] (const UIEvent& event)
-	{
-		showFileExternally(getCurrentAssetPath());
+		setCollapsed(!collapsed);
 	});
 
 	updateAddRemoveButtons();
@@ -113,7 +111,7 @@ void AssetsBrowser::makeUI()
 void AssetsBrowser::setAssetSrcMode(bool enabled)
 {
 	assetSrcMode = enabled;
-	assetEditor->setAssetSrcMode(enabled);
+	assetTabs->setAssetSrcMode(enabled);
 	getWidget("assetType")->setActive(!assetSrcMode);
 	if (assetSrcMode) {
 		listAssetSources();
@@ -127,16 +125,19 @@ void AssetsBrowser::listAssetSources()
 	if (!assetNames) {
 		assetNames = project.getAssetSrcList();
 		std::sort(assetNames->begin(), assetNames->end()); // Is this even needed?
+		fuzzyMatcher.clear();
+		fuzzyMatcher.addStrings(assetNames.value());
 	}
 
 	if (filter.isEmpty()) {
 		setListContents(assetNames.value(), curSrcPath, false);
 	} else {
 		std::vector<String> filteredList;
-		for (auto& a: assetNames.value()) {
-			if (a.asciiLower().contains(filter)) {
-				filteredList.push_back(a);
-			}
+		auto result = fuzzyMatcher.match(filter);
+		
+		filteredList.reserve(result.size());
+		for (const auto& r: result) {
+			filteredList.push_back(r.getString());
 		}
 		setListContents(filteredList, curSrcPath, true);
 	}	
@@ -184,36 +185,62 @@ void AssetsBrowser::setListContents(std::vector<String> assets, const Path& curP
 		curDirHash = hash;
 	}
 	
-	assetList->clear();
+	clearAssetList();
+
 	if (flat) {
 		for (auto& a: assets) {
-			assetList->addTextItem(a, LocalisedString::fromUserString(Path(a).getFilename().toString()));
+			addFileToList(a);
 		}
 	} else {
 		std::set<String> dirs;
-		std::vector<std::pair<String, String>> files;
+		std::vector<String> files;
 
 		for (auto& a: assets) {
 			auto relPath = Path("./" + a).makeRelativeTo(curPath);
 			if (relPath.getNumberPaths() == 1) {
-				files.emplace_back(a, relPath.toString());
+				files.emplace_back(a);
 			} else {
 				auto start = relPath.getFront(1);
 				dirs.insert(start.toString());
 			}
 		}
 
-		for (auto& dir: dirs) {
-			assetList->addTextItem(dir + "/.", LocalisedString::fromUserString("[" + dir + "]"));
+		for (const auto& dir: dirs) {
+			addDirToList(dir);
 		}
-		for (auto& file: files) {
-			assetList->addTextItem(file.first, LocalisedString::fromUserString(file.second));
+		for (const auto& file: files) {
+			addFileToList(file);
 		}
 	}
 
 	if (selectOption) {
 		assetList->setSelectedOptionId(selectOption.value());
 	}
+}
+
+void AssetsBrowser::clearAssetList()
+{
+	assetList->clear();
+}
+
+void AssetsBrowser::addDirToList(const String& dir)
+{
+	auto sizer = std::make_shared<UISizer>();
+	sizer->add(std::make_shared<UIImage>(factory.makeDirectoryIcon(dir == "..")), 0, Vector4f(0, 0, 4, 0));
+	sizer->add(assetList->makeLabel("", LocalisedString::fromUserString(dir)));
+	assetList->addItem(dir + "/.", std::move(sizer));
+}
+
+void AssetsBrowser::addFileToList(const Path& path)
+{
+	auto type = project.getAssetImporter()->getImportAssetType(path, false);
+	
+	auto sizer = std::make_shared<UISizer>();
+	sizer->add(std::make_shared<UIImage>(factory.makeImportAssetTypeIcon(type)), 0, Vector4f(0, 0, 4, 0));
+	sizer->add(assetList->makeLabel("", LocalisedString::fromUserString(path.getFilename().toString())));
+	assetList->addItem(path.toString(), std::move(sizer));
+	
+	//assetList->addTextItem(path.toString(), LocalisedString::fromUserString(path.getFilename().toString()));
 }
 
 void AssetsBrowser::refreshList()
@@ -245,13 +272,9 @@ void AssetsBrowser::loadAsset(const String& name, bool doubleClick)
 			refreshList();
 		}
 	} else {
-		assetEditor->loadAsset(name, curType, true);
-
 		if (doubleClick) {
-			assetEditor->onDoubleClickAsset();
+			assetTabs->load(assetSrcMode ? std::optional<AssetType>() : curType, name);
 		}
-
-		getWidget("metadataPanel")->setActive(true);
 	}
 }
 
@@ -259,7 +282,7 @@ void AssetsBrowser::refreshAssets(const std::vector<String>& assets)
 {
 	assetNames.reset();
 	refreshList();
-	assetEditor->refreshAssets();
+	assetTabs->refreshAssets();
 }
 
 void AssetsBrowser::updateAddRemoveButtons()
@@ -287,11 +310,11 @@ void AssetsBrowser::addAsset()
 			if (assetType == "prefab") {
 				Prefab prefab;
 				prefab.makeDefault();
-				FileSystem::writeFile(dstPath / (newName.value() + ".prefab"), YAMLConvert::generateYAML(prefab.getRoot(), YAMLConvert::EmitOptions()));
+				FileSystem::writeFile(dstPath / (newName.value() + ".prefab"), prefab.toYAML());
 			} else if (assetType == "scene") {
 				Scene scene;
 				scene.makeDefault();
-				FileSystem::writeFile(dstPath / (newName.value() + ".scene"), YAMLConvert::generateYAML(scene.getRoot(), YAMLConvert::EmitOptions()));
+				FileSystem::writeFile(dstPath / (newName.value() + ".scene"), scene.toYAML());
 			}
 		}
 	}));
@@ -304,19 +327,20 @@ void AssetsBrowser::removeAsset()
 	FileSystem::remove(project.getAssetsSrcPath() / lastClickedAsset);
 }
 
-Path AssetsBrowser::getCurrentAssetPath() const
+void AssetsBrowser::setCollapsed(bool c)
 {
-	return assetEditor->getCurrentAssetPath();
-}
+	if (collapsed != c) {
+		collapsed = c;
 
-void AssetsBrowser::openFileExternally(const Path& path)
-{
-	auto cmd = "start \"\" \"" + path.toString().replaceAll("/", "\\") + "\"";
-	system(cmd.c_str());
-}
+		auto button = getWidgetAs<UIButton>("collapseButton");
+		button->setLabel(LocalisedString::fromHardcodedString(collapsed ? ">>" : "<< Collapse"));
 
-void AssetsBrowser::showFileExternally(const Path& path)
-{
-	auto cmd = "explorer.exe /select,\"" + path.toString().replaceAll("/", "\\") + "\"";
-	system(cmd.c_str());
+		auto* parent = dynamic_cast<UIWidget*>(button->getParent());
+		if (parent) {
+			parent->getSizer()[0].setBorder(collapsed ? Vector4f(-10, 0, -15, 0) : Vector4f(0, 0, 0, 5));
+		}
+		
+		//getWidget("collapseBorder")->setActive(!collapsed);
+		getWidget("assetBrowsePanel")->setActive(!collapsed);
+	}
 }

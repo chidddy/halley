@@ -20,7 +20,7 @@ namespace Halley {
 		void render(RenderContext& rc) override;
 
 		bool isReadyToCreateWorld() const final override;
-		void createWorld() final override;
+		void createWorld(std::shared_ptr<const UIColourScheme> colourScheme) final override;
 
 		World& getWorld() const override;
 		void spawnPending() override;
@@ -29,16 +29,16 @@ namespace Halley {
 		void dragCamera(Vector2f amount) override;
 		void changeZoom(int amount, Vector2f cursorPosRelToCamera) override;
 
-		void setSelectedEntity(const UUID& id, ConfigNode& entityData) override;
+		void setSelectedEntity(const UUID& id, EntityData& entityData) override;
 
-		void onEntityAdded(const UUID& id, const ConfigNode& entityData) final override;
+		void onEntityAdded(const UUID& id, const EntityData& entityData) final override;
 		void onEntityRemoved(const UUID& id) final override;
-		void onEntityMoved(const UUID& id, const ConfigNode& entityData) final override;
-		void onEntityModified(const UUID& id, const ConfigNode& entityData) final override;
-		virtual void onEntityAdded(EntityRef entity, const ConfigNode& entityData);
+		void onEntityMoved(const UUID& id, const EntityData& entityData) final override;
+		void onEntityModified(const UUID& id, const EntityData& entityData) final override;
+		virtual void onEntityAdded(EntityRef entity, const EntityData& entityData);
 		virtual void onEntityRemoved(EntityRef entity);
-		virtual void onEntityMoved(EntityRef entity, const ConfigNode& entityData);
-		virtual void onEntityModified(EntityRef entity, const ConfigNode& entityData);
+		virtual void onEntityMoved(EntityRef entity, const EntityData& entityData);
+		virtual void onEntityModified(EntityRef entity, const EntityData& entityData);
 
 		void showEntity(const UUID& id) override;
 		ConfigNode onToolSet(SceneEditorTool tool, const String& componentName, const String& fieldName, ConfigNode options) override;
@@ -46,7 +46,7 @@ namespace Halley {
 		std::vector<std::unique_ptr<IComponentEditorFieldFactory>> getComponentEditorFieldFactories() override;
 		std::shared_ptr<UIWidget> makeCustomUI() override;
 
-		void onSceneLoaded(AssetType assetType, const String& assetId) override;
+		void onSceneLoaded(Prefab& scene) override;
     	
 		static Rect4f getSpriteTreeBounds(const EntityRef& e);
 		static std::optional<Rect4f> getSpriteBounds(const EntityRef& e);
@@ -54,7 +54,7 @@ namespace Halley {
     	void setupConsoleCommands(UIDebugConsoleController& controller, ISceneEditorWindow& sceneEditor) override;
 
     protected:
-		virtual void onInit();
+		virtual void onInit(std::shared_ptr<const UIColourScheme> colourScheme);
     	
 		virtual void createServices(World& world);
 		virtual void createEntities(World& world);

@@ -26,9 +26,8 @@ EditorRootStage::~EditorRootStage()
 
 void EditorRootStage::init()
 {
-	initSprites();
-
 	createUI();
+	initSprites();
 
 	devConServer = std::make_unique<DevConServer>(getNetworkAPI().createService(NetworkProtocol::TCP, DevCon::devConPort), DevCon::devConPort);
 
@@ -77,7 +76,10 @@ void EditorRootStage::onRender(RenderContext& context) const
 		// Background
 		Sprite bg = background;
 		bg.setTexRect(view).setSize(view.getSize()).draw(painter);
-		halleyLogo.clone().setPos(Vector2f(getVideoAPI().getWindow().getDefinition().getSize() / 2)).draw(painter);
+
+		if (!topLevelUI || !std::dynamic_pointer_cast<LoadProjectWindow>(topLevelUI)) {
+			halleyLogo.clone().setPos(Vector2f(getVideoAPI().getWindow().getDefinition().getSize() / 2)).draw(painter);
+		}
 
 		// UI
 		SpritePainter spritePainter;
@@ -111,22 +113,22 @@ bool EditorRootStage::isSoftCursor() const
 
 void EditorRootStage::initSprites()
 {
+	// Colour scheme
+	const auto& colourScheme = uiFactory->getColourScheme();
+	
+	// Background
 	{
-		// Background
-		{
-			auto mat = std::make_shared<Material>(getResource<MaterialDefinition>("Halley/Scanlines"));
-			mat
-				->set("u_col0", Colour4f(0.08f))
-				.set("u_col1", Colour4f(0.07f))
-				.set("u_distance", 6.0f);
-			background = Sprite().setMaterial(mat).setPos(Vector2f(0, 0));
-		}
+		auto mat = std::make_shared<Material>(getResource<MaterialDefinition>("Halley/Scanlines"));
+		mat
+			->set("u_col0", colourScheme->getColour("background0"))
+			.set("u_col1", colourScheme->getColour("background1"))
+			.set("u_distance", 6.0f);
+		background = Sprite().setMaterial(mat).setPos(Vector2f(0, 0));
 	}
 
 	{
 		// Halley logo
-		auto col = Colour4f(0.065f);
-		//auto col = Colour4f(0.9882f, 0.15686f, 0.27843f, 1);
+		auto col = colourScheme->getColour("backgroundLogo");
 		halleyLogo = Sprite()
 			.setImage(getResources(), "halley/halley_icon_dist.png", "Halley/DistanceFieldSprite")
 			.setPivot(Vector2f(0.5f, 0.5f))
@@ -142,7 +144,7 @@ void EditorRootStage::initSprites()
 
 void EditorRootStage::createUI()
 {
-	uiFactory = std::make_unique<EditorUIFactory>(getAPI(), getResources(), i18n);
+	uiFactory = std::make_unique<EditorUIFactory>(getAPI(), getResources(), i18n, editor.getPreferences().getColourScheme());
 	ui = std::make_unique<UIRoot>(getAPI());
 	ui->makeToolTip(uiFactory->getStyle("tooltip"));
 
@@ -152,6 +154,7 @@ void EditorRootStage::createUI()
 			setSoftCursor(!isSoftCursor());
 			return true;
 		}
+		
 		return false;
 	});
 }
@@ -190,6 +193,7 @@ void EditorRootStage::loadProject()
 
 void EditorRootStage::unloadProject()
 {
+	initSprites();
 	setTopLevelUI({});
 	project.reset();
 }
@@ -202,5 +206,6 @@ void EditorRootStage::setTopLevelUI(std::shared_ptr<UIWidget> uiWindow)
 	topLevelUI = std::move(uiWindow);
 	if (topLevelUI) {
 		ui->addChild(topLevelUI);
+		ui->registerKeyPressListener(topLevelUI, 0);
 	}
 }

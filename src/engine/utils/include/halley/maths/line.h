@@ -82,5 +82,55 @@ namespace Halley {
 			const float x = (point - a).dot(dir); // position along the A-B segment
 			return a + dir * clamp(x, 0.0f, len);
 		}
+
+		std::optional<Vector2f> intersection(const LineSegment& other, const float epsilon = 0) const
+		{
+			const float len = (this->b - this->a).length();
+			const float otherLen = (other.b - other.a).length();
+			const auto a = this->a;
+			const auto b = (this->b - this->a) / len;
+			const auto c = other.a;
+			const auto d = (other.b - other.a) / otherLen;
+			const float divisor = b.x * d.y - b.y * d.x;
+			if (std::abs(divisor) < 0.000001f) {
+				// Parallel lines
+				return {};
+			}
+			const float t = (d.x * (a.y - c.y) + d.y * (c.x - a.x)) / divisor;
+			const float u = -(b.x * (c.y - a.y) + b.y * (a.x - c.x)) / divisor;
+			
+			if (t < -epsilon || t > len + epsilon || u < -epsilon || u > otherLen + epsilon) {
+				// Out of edges
+				return {};
+			}
+			return a + t * b;
+		}
+
+		bool sharesVertexWith(const LineSegment& other) const
+		{
+			const float epsilon = 0.000001f;
+			return a.epsilonEquals(other.a, epsilon)
+				|| a.epsilonEquals(other.b, epsilon)
+				|| b.epsilonEquals(other.a, epsilon)
+				|| b.epsilonEquals(other.b, epsilon);
+		}
+
+		bool contains(Vector2f point, const float epsilon = 0.001) const
+		{
+			return (getClosestPoint(point) - point).length() < epsilon;
+		}
+
+		bool hasEndpoint(Vector2f point) const
+		{
+			const float epsilon = 0.000001f;
+			return a.epsilonEquals(point, epsilon)
+				|| b.epsilonEquals(point, epsilon);
+		}
+
+		bool epsilonEquals(const LineSegment& other, float epsilon) const
+		{
+			return (a.epsilonEquals(other.a, epsilon) && b.epsilonEquals(other.b, epsilon))
+				|| (a.epsilonEquals(other.b, epsilon) && b.epsilonEquals(other.a, epsilon));
+		}
 	};
 }

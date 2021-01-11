@@ -10,7 +10,7 @@
 using namespace Halley;
 
 BuildProjectTask::BuildProjectTask(Project& project)
-	: EditorTask("Building Project", true, true)
+	: EditorTask("Building project", true, true)
 	, project(project)
 {
 	const String scriptName = [] ()
@@ -50,31 +50,27 @@ void BuildProjectTask::run()
 		project.onBuildDone();
 	} else {
 		// Fail
-		addError("Script returned error code " + toString(returnValue));
+		logError("Build failed with error code " + toString(returnValue));
 	}
 }
 
 void BuildProjectTask::log(LoggerLevel level, const String& msg)
 {
-	if (level == LoggerLevel::Error) {
-		addError(msg);
-	}
-
 	if (buildSystem == BuildSystem::Unknown) {
 		tryToIdentifyBuildSystem(msg);
 	}
 
 	switch (buildSystem) {
 	case BuildSystem::MSBuild:
-		parseMSBuildMessage(msg);
+		level = parseMSBuildMessage(level, msg);
 		break;
 
 	case BuildSystem::Ninja:
-		parseNinjaMessage(msg);
+		level = parseNinjaMessage(level, msg);
 		break;
 	}
 
-	Logger::logDev(msg);
+	EditorTask::log(level, msg);
 }
 
 void BuildProjectTask::tryToIdentifyBuildSystem(const String& msg)
@@ -89,17 +85,19 @@ void BuildProjectTask::tryToIdentifyBuildSystem(const String& msg)
 	}
 }
 
-void BuildProjectTask::parseMSBuildMessage(const String& rawMsg)
+LoggerLevel BuildProjectTask::parseMSBuildMessage(LoggerLevel level, const String& rawMsg)
 {
 	String msg = rawMsg;
 	msg.trimBoth();
 
-	if (msg.endsWith(".c") || msg.endsWith(".cpp")) {
+	if (msg.contains("error C")) {
+		level = LoggerLevel::Error;
+	} else if (msg.contains("warning C")) {
+		level = LoggerLevel::Warning;
+	} else if (msg.endsWith(".c") || msg.endsWith(".cpp")) {
 		// Current file
 		setProgress(0, msg);
-	}
-
-	if (msg.contains("->")) {
+	} else if (msg.contains("->")) {
 		// Linking
 		auto split = msg.split("->");
 		if (split.size() >= 2) {
@@ -107,9 +105,17 @@ void BuildProjectTask::parseMSBuildMessage(const String& rawMsg)
 			setProgress(0, Path(split.back()).getFilename().toString());
 		}
 	}
+
+	if (msg.contains("message :")) {
+		level = lastLevel;
+	} else {
+		lastLevel = level;
+	}
+
+	return level;
 }
 
-void BuildProjectTask::parseNinjaMessage(const String& rawMsg)
+LoggerLevel BuildProjectTask::parseNinjaMessage(LoggerLevel level, const String& rawMsg)
 {
 	String msg = rawMsg;
 	msg.trimBoth();
@@ -128,4 +134,6 @@ void BuildProjectTask::parseNinjaMessage(const String& rawMsg)
 			setProgress(static_cast<float>(n) / static_cast<float>(total), fileName);
 		}
 	}
+
+	return level;
 }

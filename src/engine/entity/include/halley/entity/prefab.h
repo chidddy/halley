@@ -18,18 +18,31 @@ namespace Halley {
 		void parseYAML(gsl::span<const gsl::byte> yaml);
 		String toYAML() const;
 
+		void parseConfigNode(ConfigNode node);
+		virtual ConfigNode toConfigNode() const;
+
 		virtual bool isScene() const;
 
+		EntityData& getEntityData();
 		const EntityData& getEntityData() const;
-		const std::vector<EntityData>& getEntityDatas() const;
+		virtual gsl::span<const EntityData> getEntityDatas() const;
+		virtual gsl::span<EntityData> getEntityDatas();
 		std::map<UUID, const EntityData*> getEntityDataMap() const;
 
 		const std::map<UUID, EntityDataDelta>& getEntitiesModified() const;
 		const std::set<UUID>& getEntitiesAdded() const;
 		const std::set<UUID>& getEntitiesRemoved() const;
 
-		const ConfigNode& getRoot() const;
-		ConfigNode& getRoot();
+		void setGameData(const String& key, ConfigNode data);
+		ConfigNode& getGameData(const String& key);
+		const ConfigNode* tryGetGameData(const String& key) const;
+
+		virtual String getPrefabName() const;
+		String getPrefabIcon() const;
+
+		EntityData* findEntityData(const UUID& uuid);
+
+		virtual std::shared_ptr<Prefab> clone() const;
 
 	protected:
 		struct Deltas {
@@ -38,12 +51,12 @@ namespace Halley {
 			std::set<UUID> entitiesRemoved;
 		};
 
-		void loadEntityData();
-		virtual std::vector<EntityData> makeEntityDatas() const;
+		virtual EntityData makeEntityData(const ConfigNode& node) const;
 		Deltas generatePrefabDeltas(const Prefab& newPrefab) const;
+		virtual ConfigNode entityToConfigNode() const;
 		
-		std::vector<EntityData> entityDatas;
-		ConfigFile config;
+		EntityData entityData;
+		ConfigFile gameData;
 
 		Deltas deltas;
 	};
@@ -58,8 +71,16 @@ namespace Halley {
 		void reload(Resource&& resource) override;
 		void makeDefault();
 
+		gsl::span<const EntityData> getEntityDatas() const override;
+		gsl::span<EntityData> getEntityDatas() override;
+		String getPrefabName() const override;
+
+		std::shared_ptr<Prefab> clone() const override;
+
+		ConfigNode entityToConfigNode() const override;
+		
 	protected:
-		std::vector<EntityData> makeEntityDatas() const override;
+		EntityData makeEntityData(const ConfigNode& node) const override;
 		Deltas generateSceneDeltas(const Scene& newScene) const;
 	};
 }

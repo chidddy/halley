@@ -29,8 +29,9 @@ namespace Halley {
     	EntityData(EntityData&& other) = default;
     	EntityData& operator=(const EntityData& other) = delete;
     	EntityData& operator=(EntityData&& other) = default;
+        explicit EntityData(const EntityDataDelta& delta);
 
-    	ConfigNode toConfigNode() const;
+    	ConfigNode toConfigNode(bool allowPrefabUUID) const;
         String toYAML() const;
 
     	void serialize(Serializer& s) const;
@@ -38,6 +39,7 @@ namespace Halley {
 
     	const String& getName() const { return name; }
     	const String& getPrefab() const { return prefab; }
+    	const String& getIcon() const { return icon; }
     	const UUID& getInstanceUUID() const { return instanceUUID; }
     	const UUID& getPrefabUUID() const { return prefabUUID; }
     	const UUID& getParentUUID() const { return parentUUID; }
@@ -49,9 +51,11 @@ namespace Halley {
 
   	    const EntityData* tryGetPrefabUUID(const UUID& uuid) const;
         const EntityData* tryGetInstanceUUID(const UUID& uuid) const;
+    	EntityData* tryGetInstanceUUID(const UUID& uuid);
 
     	void setName(String name);
     	void setPrefab(String prefab);
+    	void setIcon(String icon);
     	void setInstanceUUID(UUID instanceUUID);
     	void setPrefabUUID(UUID prefabUUID);
         void setParentUUID(UUID parentUUID);
@@ -74,15 +78,21 @@ namespace Halley {
         const EntityData& asEntityData() const override;
         const EntityDataDelta& asEntityDataDelta() const override;
 
+    	void setSceneRoot(bool root);
+    	bool isSceneRoot() const;
+
+        std::optional<size_t> getChildIndex(const UUID& uuid) const;
+
     private:
     	String name;
     	String prefab;
+    	String icon;
     	UUID instanceUUID;
     	UUID prefabUUID;
     	UUID parentUUID;
     	std::vector<EntityData> children;
     	std::vector<std::pair<String, ConfigNode>> components;
-    	bool fromPrefab = false;
+    	bool sceneRoot = false;
 
     	void addComponent(String key, ConfigNode data);
     	void parseUUID(UUID& dst, const ConfigNode& node);

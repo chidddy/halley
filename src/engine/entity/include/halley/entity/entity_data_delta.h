@@ -28,6 +28,7 @@ namespace Halley {
 
 		const std::optional<String>& getName() const { return name; }
 		const std::optional<String>& getPrefab() const { return prefab; }
+		const std::optional<String>& getIcon() const { return icon; }
 		const std::optional<UUID>& getPrefabUUID() const { return prefabUUID; }
 		void setPrefabUUID(const UUID& uuid);
 		
@@ -44,9 +45,12 @@ namespace Halley {
         const EntityData& asEntityData() const override;
         const EntityDataDelta& asEntityDataDelta() const override;
 
+		bool modifiesTheSameAs(const EntityDataDelta& other) const;
+
 	private:
     	std::optional<String> name;
     	std::optional<String> prefab;
+		std::optional<String> icon;
     	std::optional<UUID> instanceUUID;
     	std::optional<UUID> prefabUUID;
 		std::optional<UUID> parentUUID;
@@ -73,7 +77,8 @@ namespace Halley {
         	ChildrenChanged,
         	ChildrenAdded,
         	ChildrenRemoved,
-        	ChildrenOrder
+        	ChildrenOrder,
+        	Icon
         };
 
     	static uint16_t getFieldBit(FieldId id);
@@ -81,6 +86,8 @@ namespace Halley {
     	static bool isFieldPresent(uint16_t value, FieldId id);
 
 		uint16_t getFieldsPresent() const;
+
+		std::vector<std::pair<String, ConfigNode>> getComponentEmptyStructure() const;
 	};
 
 	class SceneDataDelta {

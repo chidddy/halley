@@ -2,13 +2,22 @@
 using namespace Halley;
 
 Preferences::Preferences() 
-	: windowSize(Vector2i(1280, 720))
 {
+	loadDefaults();
 }
 
 void Preferences::setEditorVersion(String editorVersion)
 {
 	this->editorVersion = std::move(editorVersion);
+}
+
+void Preferences::loadDefaults()
+{
+	recents.clear();
+	windowPosition = {};
+	windowSize = Vector2i(1280, 720);
+	windowState = WindowState::Normal;
+	colourScheme = "Dark Glass";
 }
 
 ConfigNode Preferences::save() const
@@ -28,16 +37,14 @@ ConfigNode Preferences::save() const
 	}
 
 	root["disabledPlatforms"] = ConfigNode(disabledPlatforms);
+	root["colourScheme"] = colourScheme;
 
 	return root;
 }
 
 void Preferences::load(const ConfigNode& root)
 {
-	recents.clear();
-	windowPosition = {};
-	windowSize = Vector2i(1280, 720);
-	windowState = WindowState::Normal;
+	loadDefaults();
 
 	recents = root["recents"].asVector<String>({});
 	if (root.hasKey("window")) {
@@ -49,6 +56,10 @@ void Preferences::load(const ConfigNode& root)
 		windowState = WindowState(windowNode["state"].asInt());
 	}
 	disabledPlatforms = root["disabledPlatforms"].asVector<String>({});
+
+	if (root.hasKey("colourScheme")) {
+		colourScheme = root["colourScheme"].asString();
+	}
 }
 
 bool Preferences::isDirty() const
@@ -136,8 +147,19 @@ void Preferences::setPlatformDisabled(const String& name, bool disabled)
 	}
 }
 
+const String& Preferences::getColourScheme() const
+{
+	return colourScheme;
+}
+
+void Preferences::setColourScheme(String colourScheme)
+{
+	this->colourScheme = std::move(colourScheme);
+}
+
 void Preferences::loadEditorPreferences(const Preferences& preferences)
 {
 	dirty = true;
 	disabledPlatforms = preferences.disabledPlatforms;
+	colourScheme = preferences.colourScheme;
 }

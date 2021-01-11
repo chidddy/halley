@@ -5,6 +5,7 @@ include_directories(${Boost_INCLUDE_DIR} "include" "include/halley/ui" "../core/
 set(SOURCES
         "src/ui/ui_anchor.cpp"
         "src/ui/ui_behaviour.cpp"
+        "src/ui/ui_colour_scheme.cpp"
         "src/ui/ui_data_bind.cpp"
         "src/ui/ui_event.cpp"
         "src/ui/ui_event_handler.cpp"
@@ -36,6 +37,7 @@ set(SOURCES
         "src/ui/widgets/ui_label.cpp"
         "src/ui/widgets/ui_list.cpp"
         "src/ui/widgets/ui_menu_button.cpp"
+        "src/ui/widgets/ui_multi_image.cpp"
 		"src/ui/widgets/ui_option_list_morpher.cpp"
         "src/ui/widgets/ui_paged_pane.cpp"
         "src/ui/widgets/ui_scroll_pane.cpp"
@@ -54,6 +56,7 @@ set(HEADERS
 
         "include/halley/ui/ui_anchor.h"
         "include/halley/ui/ui_behaviour.h"
+        "include/halley/ui/ui_colour_scheme.h"
         "include/halley/ui/ui_data_bind.h"
         "include/halley/ui/ui_element.h"
         "include/halley/ui/ui_event.h"
@@ -86,6 +89,7 @@ set(HEADERS
         "include/halley/ui/widgets/ui_label.h"
         "include/halley/ui/widgets/ui_list.h"
         "include/halley/ui/widgets/ui_menu_button.h"
+        "include/halley/ui/widgets/ui_multi_image.h"
 		"include/halley/ui/widgets/ui_option_list_morpher.h"
         "include/halley/ui/widgets/ui_paged_pane.h"
         "include/halley/ui/widgets/ui_scroll_pane.h"

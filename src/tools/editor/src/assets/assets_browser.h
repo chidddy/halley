@@ -1,5 +1,6 @@
 #pragma once
 
+#include "asset_browser_tabs.h"
 #include "halley/core/api/halley_api.h"
 #include "halley/ui/ui_factory.h"
 #include "halley/ui/ui_widget.h"
@@ -7,6 +8,7 @@
 #include "halley/ui/widgets/ui_paged_pane.h"
 
 namespace Halley {
+	class EditorUIFactory;
 	class ProjectWindow;
 	class Project;
 	class MetadataEditor;
@@ -15,12 +17,12 @@ namespace Halley {
 	
 	class AssetsBrowser : public UIWidget {
     public:
-        AssetsBrowser(UIFactory& factory, Project& project, ProjectWindow& projectWindow);
-        void showAsset(AssetType type, const String& assetId);
-		void showFile(const Path& path);
+        AssetsBrowser(EditorUIFactory& factory, Project& project, ProjectWindow& projectWindow);
+        void openAsset(AssetType type, const String& assetId);
+		void openFile(const Path& path);
 
-	private:
-		UIFactory& factory;
+    private:
+		EditorUIFactory& factory;
 		Project& project;
 		ProjectWindow& projectWindow;
 
@@ -30,15 +32,19 @@ namespace Halley {
 
 		bool assetSrcMode = true;
 		std::optional<std::vector<String>> assetNames;
+
+		FuzzyTextMatcher fuzzyMatcher;
 		String filter;
         
 		std::shared_ptr<UIList> assetList;
-		std::shared_ptr<AssetEditorWindow> assetEditor;
+		std::shared_ptr<AssetBrowserTabs> assetTabs;
 
         String lastClickedAsset;
 
 		uint64_t curHash = 0;
 		uint64_t curDirHash = 0;
+
+		bool collapsed = false;
 
         void loadResources();
         void makeUI();
@@ -51,14 +57,16 @@ namespace Halley {
 		void refreshList();
 		void setFilter(const String& filter);
 
+		void clearAssetList();
+		void addDirToList(const String& dir);
+		void addFileToList(const Path& path);
+
 		void loadAsset(const String& name, bool doubleClick);
 		void refreshAssets(const std::vector<String>& assets);
 
 		void addAsset();
 		void removeAsset();
 
-		Path getCurrentAssetPath() const;
-		void openFileExternally(const Path& path);
-		void showFileExternally(const Path& path);
+		void setCollapsed(bool collapsed);
 	};
 }

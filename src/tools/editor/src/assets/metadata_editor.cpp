@@ -20,6 +20,7 @@ void MetadataEditor::setResource(Project& p, AssetType type, const Path& path, M
 	filePath = path;
 	project = &p;
 	metadata = project->readMetadataFromDisk(filePath);
+	origMetadata = metadata;
 	effectiveMetadata = std::move(effectiveMeta);
 
 	makeUI();
@@ -27,8 +28,8 @@ void MetadataEditor::setResource(Project& p, AssetType type, const Path& path, M
 
 void MetadataEditor::onMetadataChanged()
 {
-	changed = true;
-	getWidget("applyChanges")->setEnabled(true);
+	changed = metadata != origMetadata;
+	getWidget("applyChanges")->setEnabled(changed);
 }
 
 void MetadataEditor::saveMetadata()
@@ -38,6 +39,11 @@ void MetadataEditor::saveMetadata()
 		changed = false;
 		getWidget("applyChanges")->setEnabled(false);
 	}
+}
+
+bool MetadataEditor::isModified() const
+{
+	return changed;
 }
 
 void MetadataEditor::makeUI()
@@ -248,7 +254,7 @@ void MetadataEditor::makeStringField(UISizer& sizer, const String& key, const St
 
 void MetadataEditor::makeDropdownField(UISizer& sizer, const String& key, std::vector<String> values, const String& defaultValue)
 {
-	const auto result = std::make_shared<UIDropdown>(key, factory.getStyle("dropdown"), factory.getStyle("scrollbar"), factory.getStyle("list"));
+	const auto result = std::make_shared<UIDropdown>(key, factory.getStyle("dropdown"));
 	result->setOptions(std::move(values));
 	sizer.add(result, 1);
 

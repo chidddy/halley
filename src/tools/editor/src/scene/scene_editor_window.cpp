@@ -1,6 +1,7 @@
 #include "scene_editor_window.h"
 #include "choose_asset_window.h"
 #include "entity_editor.h"
+#include "entity_icons.h"
 #include "entity_list.h"
 #include "halley/entity/entity_factory.h"
 #include "halley/entity/prefab_scene_data.h"
@@ -11,16 +12,17 @@
 #include "halley/ui/ui_factory.h"
 #include "scene_editor_canvas.h"
 #include "scene_editor_game_bridge.h"
-#include "scene_editor_tabs.h"
+#include "src/ui/project_window.h"
 using namespace Halley;
 
-SceneEditorWindow::SceneEditorWindow(UIFactory& factory, Project& project, const HalleyAPI& api, SceneEditorTabs& sceneEditorTabs)
+SceneEditorWindow::SceneEditorWindow(UIFactory& factory, Project& project, const HalleyAPI& api, ProjectWindow& projectWindow)
 	: UIWidget("scene_editor", {}, UISizer())
 	, api(api)
 	, uiFactory(factory)
 	, project(project)
-	, sceneEditorTabs(sceneEditorTabs)
+	, projectWindow(projectWindow)
 	, gameBridge(std::make_shared<SceneEditorGameBridge>(api, uiFactory.getResources(), uiFactory, project))
+	, entityIcons(std::make_shared<EntityIcons>(project.getGameResources(), *factory.getColourScheme()))
 {
 	makeUI();
 
@@ -56,7 +58,7 @@ void SceneEditorWindow::makeUI()
 
 	toolMode = getWidgetAs<UIList>("toolMode");
 	
-	setSaveEnabled(false);
+	setModified(false);
 
 	setHandle(UIEventType::ListSelectionChanged, "entityList_list", [=] (const UIEvent& event)
 	{
@@ -78,7 +80,7 @@ void SceneEditorWindow::makeUI()
 
 	setHandle(UIEventType::ButtonClicked, "saveButton", [=] (const UIEvent& event)
 	{
-		saveEntity();
+		saveScene();
 	});
 
 	setHandle(UIEventType::ButtonClicked, "addEntity", [=] (const UIEvent& event)
@@ -130,9 +132,8 @@ void SceneEditorWindow::loadScene(AssetType assetType, const Prefab& origPrefab)
 		auto& world = interface.getWorld();
 
 		// Load prefab
-		prefab = std::make_shared<Prefab>(origPrefab);
+		prefab = origPrefab.clone();
 		origPrefabAssetType = assetType;
-		preparePrefab(*prefab);
 
 		// Spawn scene
 		entityFactory = std::make_shared<EntityFactory>(world, project.getGameResources());
@@ -160,7 +161,7 @@ void SceneEditorWindow::loadScene(AssetType assetType, const Prefab& origPrefab)
 		setupConsoleCommands();
 
 		// Done
-		gameBridge->onSceneLoaded(assetType, origPrefab.getAssetId());
+		gameBridge->onSceneLoaded(*prefab);
 	}
 }
 
@@ -197,6 +198,7 @@ void SceneEditorWindow::update(Time t, bool moved)
 	if (currentEntityScene && entityFactory) {
 		if (currentEntityScene->needsUpdate()) {
 			currentEntityScene->updateOnEditor(*entityFactory);
+			entityList->refreshNames();
 		}
 	}
 }
@@ -204,7 +206,17 @@ void SceneEditorWindow::update(Time t, bool moved)
 bool SceneEditorWindow::onKeyPress(KeyboardKeyPress key)
 {
 	if (key.is(KeyCode::S, KeyMods::Ctrl)) {
-		saveEntity();
+		saveScene();
+		return true;
+	}
+
+	if (key.is(KeyCode::Z, KeyMods::Ctrl)) {
+		undoStack.undo(*this);
+		return true;
+	}
+
+	if (key.is(KeyCode::Y, KeyMods::Ctrl)) {
+		undoStack.redo(*this);
 		return true;
 	}
 
@@ -246,6 +258,21 @@ void SceneEditorWindow::selectEntity(const std::vector<UUID>& candidates)
 	entityList->select("");
 }
 
+void SceneEditorWindow::modifyEntity(const String& id, const EntityDataDelta& delta)
+{
+	auto& data = sceneData->getWriteableEntityNodeData(id).getData();
+	data.applyDelta(delta);
+	onEntityModified(id, data, data);
+	entityEditor->reloadEntity();
+}
+
+void SceneEditorWindow::moveEntity(const String& id, const String& newParent, int childIndex)
+{
+	auto [prevParent, prevIndex] = sceneData->reparentEntity(id, newParent, childIndex);
+	entityList->refreshList();
+	onEntityMoved(id, prevParent, prevIndex, newParent, childIndex);
+}
+
 void SceneEditorWindow::onEntitySelected(const String& id)
 {
 	decayTool();
@@ -255,8 +282,9 @@ void SceneEditorWindow::onEntitySelected(const String& id)
 		const auto& tree = sceneData->getEntityTree();
 		if (tree.entityId.isEmpty()) {
 			if (tree.children.empty()) {
-				ConfigNode empty;
+				EntityData empty;
 				entityEditor->loadEntity("", empty, nullptr, false, project.getGameResources());
+				currentEntityId = "";
 				return;
 			} else {
 				actualId = tree.children[0].entityId;
@@ -266,11 +294,11 @@ void SceneEditorWindow::onEntitySelected(const String& id)
 		}
 	}
 
-	auto& entityData = sceneData->getEntityNodeData(actualId).data;
-	const ConfigNode* prefabData = nullptr;
-	const String prefabName = entityData["prefab"].asString("");
+	auto& entityData = sceneData->getWriteableEntityNodeData(actualId).getData();
+	const Prefab* prefabData = nullptr;
+	const String prefabName = entityData.getPrefab();
 	if (!prefabName.isEmpty()) {
-		prefabData = &getGamePrefab(prefabName)->getRoot();
+		prefabData = getGamePrefab(prefabName).get();
 	}
 	
 	entityEditor->loadEntity(actualId, entityData, prefabData, false, project.getGameResources());
@@ -283,9 +311,10 @@ void SceneEditorWindow::panCameraToEntity(const String& id)
 	gameBridge->showEntity(UUID(id));
 }
 
-void SceneEditorWindow::saveEntity()
+void SceneEditorWindow::saveScene()
 {
-	setSaveEnabled(false);
+	clearModifiedFlag();
+	undoStack.onSave();
 
 	const auto strData = prefab->toYAML();
 	auto data = gsl::as_bytes(gsl::span<const char>(strData.c_str(), strData.length()));
@@ -295,23 +324,32 @@ void SceneEditorWindow::saveEntity()
 
 void SceneEditorWindow::markModified()
 {
-	setSaveEnabled(true);
+	setModified(true);
 }
 
-void SceneEditorWindow::onEntityAdded(const String& id, const String& parentId, const String& afterSiblingId)
+void SceneEditorWindow::clearModifiedFlag()
 {
-	auto& data = sceneData->getEntityNodeData(id).data;
-	entityList->onEntityAdded(id, parentId, afterSiblingId, data);
+	setModified(false);
+}
+
+void SceneEditorWindow::onEntityAdded(const String& id, const String& parentId, int childIndex)
+{
+	const auto& data = sceneData->getEntityNodeData(id).getData();
+	entityList->onEntityAdded(id, parentId, childIndex, data);
 	sceneData->reloadEntity(parentId.isEmpty() ? id : parentId);
 	onEntitySelected(id);
 
 	gameBridge->onEntityAdded(UUID(id), data);
+
+	undoStack.pushAdded(modified, id, parentId, childIndex, data);
 	
 	markModified();
 }
 
-void SceneEditorWindow::onEntityRemoved(const String& id, const String& parentId)
+void SceneEditorWindow::onEntityRemoved(const String& id, const String& parentId, int childIndex, const EntityData& prevData)
 {
+	undoStack.pushRemoved(modified, id, parentId, childIndex, prevData);
+	
 	gameBridge->onEntityRemoved(UUID(id));
 
 	entityList->onEntityRemoved(id, parentId);
@@ -321,28 +359,31 @@ void SceneEditorWindow::onEntityRemoved(const String& id, const String& parentId
 	markModified();
 }
 
-void SceneEditorWindow::onEntityModified(const String& id)
+void SceneEditorWindow::onEntityModified(const String& id, const EntityData& prevData, const EntityData& newData)
 {
 	if (!id.isEmpty()) {
-		const auto& data = sceneData->getEntityNodeData(id).data;
+		const auto& data = sceneData->getEntityNodeData(id).getData();
 
-		entityList->onEntityModified(id, data);
+		const bool hadChange = undoStack.pushModified(modified, id, prevData, newData);
 
-		sceneData->reloadEntity(id);
-		
-		gameBridge->onEntityModified(UUID(id), data);
+		if (hadChange) {
+			entityList->onEntityModified(id, data);
+			sceneData->reloadEntity(id);
+			gameBridge->onEntityModified(UUID(id), data);
+			markModified();
+		}
 	}
-
-	markModified();
 }
 
-void SceneEditorWindow::onEntityMoved(const String& id)
+void SceneEditorWindow::onEntityMoved(const String& id, const String& prevParentId, int prevChildIndex, const String& newParentId, int newChildIndex)
 {
 	if (currentEntityId == id) {
 		onEntitySelected(id);
 	}
 
-	gameBridge->onEntityMoved(UUID(id), sceneData->getEntityNodeData(id).data);
+	gameBridge->onEntityMoved(UUID(id), sceneData->getEntityNodeData(id).getData());
+
+	undoStack.pushMoved(modified, id, prevParentId, prevChildIndex, newParentId, newChildIndex);
 	
 	markModified();
 }
@@ -357,7 +398,6 @@ void SceneEditorWindow::onComponentRemoved(const String& name)
 void SceneEditorWindow::onFieldChangedByGizmo(const String& componentName, const String& fieldName)
 {
 	entityEditor->onFieldChangedByGizmo(componentName, fieldName);
-	onEntityModified(currentEntityId);
 }
 
 void SceneEditorWindow::setTool(SceneEditorTool tool)
@@ -410,8 +450,7 @@ void SceneEditorWindow::pasteEntityFromClipboard(const String& referenceId)
 
 String SceneEditorWindow::copyEntity(const String& id)
 {
-	const auto entityData = sceneData->getEntityNodeData(id);
-	return serializeEntity(entityData.data);
+	return serializeEntity(sceneData->getEntityNodeData(id).getData());
 }
 
 void SceneEditorWindow::pasteEntity(const String& stringData, const String& referenceId)
@@ -430,7 +469,7 @@ void SceneEditorWindow::duplicateEntity(const String& id)
 
 void SceneEditorWindow::openEditPrefabWindow(const String& name)
 {
-	sceneEditorTabs.load(AssetType::Prefab, name);
+	projectWindow.openAsset(AssetType::Prefab, name);
 }
 
 const std::shared_ptr<ISceneData>& SceneEditorWindow::getSceneData() const
@@ -440,11 +479,8 @@ const std::shared_ptr<ISceneData>& SceneEditorWindow::getSceneData() const
 
 void SceneEditorWindow::addNewEntity()
 {
-	auto data = ConfigNode(ConfigNode::MapType());
-	data["name"] = "";
-	data["uuid"] = UUID::generate().toString();
-	data["children"] = ConfigNode::SequenceType();
-	data["components"] = ConfigNode::SequenceType();
+	EntityData data;
+	data.setInstanceUUID(UUID::generate());
 	addEntity(std::move(data));
 }
 
@@ -462,84 +498,67 @@ void SceneEditorWindow::addNewPrefab(const String& prefabName)
 {
 	const auto prefab = getGamePrefab(prefabName);
 	if (prefab) {
-		const auto& prefabRoot = prefab->getRoot();
-		if (prefabRoot.getType() == ConfigNodeType::Map) {
-			auto components = ConfigNode::SequenceType();
+		const auto& entityData = prefab->getEntityData();
+		auto components = std::vector<std::pair<String, ConfigNode>>();
 
-			// Clone transform components
-			for (auto& c: prefabRoot["components"].asSequence()) {
-				for (auto& kv: c.asMap()) {
-					if (kv.first == "Transform2D" || kv.first == "Transform3D") {
-						components.emplace_back(c);
-					}
-				}
+		// Clone transform components
+		for (const auto& kv: entityData.getComponents()) {
+			if (kv.first == "Transform2D" || kv.first == "Transform3D") {
+				components.emplace_back(kv);
 			}
-
-			auto data = ConfigNode(ConfigNode::MapType());
-			data["uuid"] = UUID::generate().toString();
-			data["components"] = std::move(components);
-			data["prefab"] = prefabName;
-			addEntity(std::move(data));
 		}
+
+		EntityData data;
+		data.setInstanceUUID(UUID::generate());
+		data.setPrefab(prefabName);
+		data.setComponents(components);
+		addEntity(std::move(data));
 	}
 }
 
-void SceneEditorWindow::addEntity(ConfigNode data)
+void SceneEditorWindow::addEntity(EntityData data)
 {
 	addEntity(currentEntityId, false, std::move(data));
 }
 
-void SceneEditorWindow::addEntity(const String& referenceEntity, bool childOfReference, ConfigNode data)
+void SceneEditorWindow::addEntity(const String& referenceEntity, bool childOfReference, EntityData data)
 {
 	if (referenceEntity.isEmpty()) {
-		addEntity(referenceEntity, true, std::move(data));
+		addEntity(String(), -1, std::move(data));
 	} else {
-		const bool isScene = sceneData->getEntityNodeData("").data.getType() == ConfigNodeType::Sequence;
+		const bool isScene = sceneData->getEntityNodeData("").getData().isSceneRoot();
 		
-		const auto ref = sceneData->getEntityNodeData(referenceEntity);
-		const bool canBeSibling = !ref.parentId.isEmpty() || isScene;
-		const bool canBeChild = !ref.data.hasKey("prefab");
+		const auto& ref = sceneData->getEntityNodeData(referenceEntity);
+		const bool canBeSibling = !ref.getParentId().isEmpty() || isScene;
+		const bool canBeChild = ref.getData().getPrefab().isEmpty();
 		if (!canBeChild && !canBeSibling) {
 			return;
 		}
 		
 		const bool addAsChild = (childOfReference && canBeChild) || !canBeSibling;
-		const String& parentId = addAsChild ? referenceEntity : ref.parentId;
-		const String& siblingId = addAsChild ? "" : referenceEntity;
+		const String& parentId = addAsChild ? referenceEntity : ref.getParentId();
 
-		addEntity(parentId, siblingId, std::move(data));
+		int childIndex = -1;
+		if (!addAsChild) {
+			const auto idx = ref.getData().getChildIndex(UUID(referenceEntity));
+			childIndex = idx ? static_cast<int>(idx.value()) : -1;
+		}
+
+		addEntity(parentId, childIndex, std::move(data));
 	}
 }
 
-void SceneEditorWindow::addEntity(const String& parentId, const String& afterSibling, ConfigNode data)
+void SceneEditorWindow::addEntity(const String& parentId, int childIndex, EntityData data)
 {
-	auto addOnSequence = [&] (ConfigNode::SequenceType& seq)
-	{
-		const auto uuid = data["uuid"].asString();
-		auto insertPos = std::find_if(seq.begin(), seq.end(), [&] (const ConfigNode& node) -> bool
-		{
-			return node["uuid"].asString() == afterSibling;
-		});		
-		if (insertPos != seq.end()) {
-			++insertPos;
-		}
-		seq.insert(insertPos, std::move(data));
-		onEntityAdded(uuid, parentId, afterSibling);
-	};
-	
-	if (parentId.isEmpty()) {
-		// Should only be able to place items on the root if it's a scene, and therefore the root is a sequence
-		auto& root = sceneData->getEntityNodeData("").data;
-		if (root.getType() == ConfigNodeType::Sequence) {
-			addOnSequence(root.asSequence());
-		}
-	} else {
-		ConfigNode& parentData = sceneData->getEntityNodeData(parentId).data;
-		if (!parentData.hasKey("prefab")) {
-			auto& children = parentData["children"];
-			children.ensureType(ConfigNodeType::Sequence);
-			addOnSequence(children.asSequence());
-		}
+	EntityData& parentData = sceneData->getWriteableEntityNodeData(parentId).getData();
+	if (parentData.getPrefab().isEmpty() && (parentId != "" || parentData.isSceneRoot())) {
+		const auto uuid = data.getInstanceUUID().toString();
+
+		const size_t insertPos = childIndex >= 0 ? static_cast<size_t>(childIndex) : std::numeric_limits<size_t>::max();
+		auto& seq = parentData.getChildren();
+		seq.insert(seq.begin() + std::min(insertPos, seq.size()), std::move(data));
+
+		onEntityAdded(uuid, parentId, childIndex);
 	}
 }
 
@@ -554,20 +573,23 @@ void SceneEditorWindow::removeEntity(const String& targetId)
 {
 	const String& parentId = findParent(currentEntityId);
 
-	auto& data = sceneData->getEntityNodeData(parentId).data;
-	const bool isSceneRoot = parentId.isEmpty() && data.getType() == ConfigNodeType::Sequence;
+	auto& data = sceneData->getWriteableEntityNodeData(parentId).getData();
+	const bool isSceneRoot = parentId.isEmpty() && data.isSceneRoot();
 	if (parentId.isEmpty() && !isSceneRoot) {
 		// Don't delete root of prefab
 		return;
 	}
 
-	auto& children = isSceneRoot ? data.asSequence() : data["children"].asSequence();
-	children.erase(std::remove_if(children.begin(), children.end(), [&] (const ConfigNode& child)
-	{
-		return child["uuid"].asString("") == targetId;
-	}), children.end());
-
-	onEntityRemoved(targetId, parentId);
+	auto& children = data.getChildren();
+	for (auto iter = children.begin(); iter != children.end(); ++iter) {
+		if (iter->getInstanceUUID().toString() == targetId) {
+			const auto data = std::move(*iter);
+			const int idx = iter - children.begin();
+			children.erase(iter);
+			onEntityRemoved(targetId, parentId, idx, data);
+			break;
+		}
+	}
 }
 
 String SceneEditorWindow::findParent(const String& entityId) const
@@ -591,45 +613,6 @@ const String* SceneEditorWindow::findParent(const String& entityId, const Entity
 	}
 
 	return nullptr;
-}
-
-void SceneEditorWindow::preparePrefab(Prefab& prefab)
-{
-	auto& root = prefab.getRoot();
-	if (root.getType() == ConfigNodeType::Sequence) {
-		for (auto& rootElement: root.asSequence()) {
-			preparePrefabEntity(rootElement);
-		}
-	} else {
-		preparePrefabEntity(prefab.getRoot());
-	}
-}
-
-void SceneEditorWindow::preparePrefabEntity(ConfigNode& node)
-{
-	const bool isPrefab = node.hasKey("prefab");
-	
-	if (!node.hasKey("uuid")) {
-		node["uuid"] = UUID::generate().toString();
-	}
-
-	if (!node.hasKey("components")) {
-		node["components"] = ConfigNode::SequenceType();
-	}
-
-	if (!isPrefab) {
-		if (!node.hasKey("name")) {
-			node["name"] = "Entity";
-		}
-
-		if (!node.hasKey("children")) {
-			node["children"] = ConfigNode::SequenceType();
-		} else {
-			for (auto& c: node["children"].asSequence()) {
-				preparePrefabEntity(c);
-			}
-		}
-	}
 }
 
 void SceneEditorWindow::setCustomUI(std::shared_ptr<UIWidget> ui)
@@ -670,21 +653,32 @@ void SceneEditorWindow::decayTool()
 	}
 }
 
-void SceneEditorWindow::setSaveEnabled(bool enabled)
+void SceneEditorWindow::setModified(bool enabled)
 {
 	auto button = getWidgetAs<UIButton>("saveButton");
 	button->setLabel(LocalisedString::fromHardcodedString(enabled ? "* Save" : "Save"));
 	button->setEnabled(enabled);
+	modified = enabled;
 }
 
-String SceneEditorWindow::serializeEntity(const ConfigNode& node) const
+bool SceneEditorWindow::isModified() const
+{
+	return modified;
+}
+
+const EntityIcons& SceneEditorWindow::getEntityIcons() const
+{
+	return *entityIcons;
+}
+
+String SceneEditorWindow::serializeEntity(const EntityData& node) const
 {
 	YAMLConvert::EmitOptions options;
-	options.mapKeyOrder = {{ "name", "uuid", "components", "children" }};
-	return YAMLConvert::generateYAML(node, options);
+	options.mapKeyOrder = {{ "name", "icon", "prefab", "uuid", "components", "children" }};
+	return YAMLConvert::generateYAML(node.toConfigNode(false), options);
 }
 
-std::optional<ConfigNode> SceneEditorWindow::deserializeEntity(const String& data) const
+std::optional<EntityData> SceneEditorWindow::deserializeEntity(const String& data) const
 {
 	ConfigFile file;
 	try {
@@ -692,19 +686,17 @@ std::optional<ConfigNode> SceneEditorWindow::deserializeEntity(const String& dat
 		if (!isValidEntityTree(file.getRoot())) {
 			return {};
 		}
-		return std::move(file.getRoot());
+		return EntityData(file.getRoot(), false);
 	} catch (...) {
 		return {};
 	}
 }
 
-void SceneEditorWindow::assignUUIDs(ConfigNode& node)
+void SceneEditorWindow::assignUUIDs(EntityData& node)
 {
-	node["uuid"] = UUID::generate().toString();
-	if (node["children"].getType() == ConfigNodeType::Sequence) {
-		for (auto& child: node["children"].asSequence()) {
-			assignUUIDs(child);
-		}
+	node.setInstanceUUID(UUID::generate());
+	for (auto& child: node.getChildren()) {
+		assignUUIDs(child);
 	}
 }
 
