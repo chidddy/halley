@@ -12,6 +12,7 @@
 #include "halley/ui/ui_factory.h"
 #include "scene_editor_canvas.h"
 #include "scene_editor_game_bridge.h"
+#include "scene_editor_gizmo_collection.h"
 #include "src/ui/project_window.h"
 using namespace Halley;
 
@@ -21,7 +22,7 @@ SceneEditorWindow::SceneEditorWindow(UIFactory& factory, Project& project, const
 	, uiFactory(factory)
 	, project(project)
 	, projectWindow(projectWindow)
-	, gameBridge(std::make_shared<SceneEditorGameBridge>(api, uiFactory.getResources(), uiFactory, project))
+	, gameBridge(std::make_shared<SceneEditorGameBridge>(api, uiFactory.getResources(), uiFactory, project, projectWindow))
 	, entityIcons(std::make_shared<EntityIcons>(project.getGameResources(), *factory.getColourScheme()))
 {
 	makeUI();
@@ -83,6 +84,16 @@ void SceneEditorWindow::makeUI()
 		saveScene();
 	});
 
+	setHandle(UIEventType::ButtonClicked, "undoButton", [=] (const UIEvent& event)
+	{
+		undo();
+	});
+
+	setHandle(UIEventType::ButtonClicked, "redoButton", [=] (const UIEvent& event)
+	{
+		redo();
+	});
+
 	setHandle(UIEventType::ButtonClicked, "addEntity", [=] (const UIEvent& event)
 	{
 		addNewEntity();
@@ -107,7 +118,7 @@ void SceneEditorWindow::onAddedToRoot()
 void SceneEditorWindow::loadScene(const String& name)
 {
 	unloadScene();
-	assetPath = project.getAssetsSrcPath() / project.getImportAssetsDatabase().getPrimaryInputFile(AssetType::Scene, name);
+	assetPath = project.getImportAssetsDatabase().getPrimaryInputFile(AssetType::Scene, name);
 
 	if (!name.isEmpty()) {
 		loadScene(AssetType::Scene, *project.getGameResources().get<Scene>(name));
@@ -117,7 +128,7 @@ void SceneEditorWindow::loadScene(const String& name)
 void SceneEditorWindow::loadPrefab(const String& name)
 {
 	unloadScene();
-	assetPath = project.getAssetsSrcPath() / project.getImportAssetsDatabase().getPrimaryInputFile(AssetType::Prefab, name);
+	assetPath = project.getImportAssetsDatabase().getPrimaryInputFile(AssetType::Prefab, name);
 
 	if (!name.isEmpty()) {
 		loadScene(AssetType::Prefab, *project.getGameResources().get<Prefab>(name));
@@ -201,6 +212,11 @@ void SceneEditorWindow::update(Time t, bool moved)
 			entityList->refreshNames();
 		}
 	}
+
+	if (buttonsNeedUpdate) {
+		buttonsNeedUpdate = false;
+		updateButtons();
+	}
 }
 
 bool SceneEditorWindow::onKeyPress(KeyboardKeyPress key)
@@ -211,12 +227,12 @@ bool SceneEditorWindow::onKeyPress(KeyboardKeyPress key)
 	}
 
 	if (key.is(KeyCode::Z, KeyMods::Ctrl)) {
-		undoStack.undo(*this);
+		undo();
 		return true;
 	}
 
 	if (key.is(KeyCode::Y, KeyMods::Ctrl)) {
-		undoStack.redo(*this);
+		redo();
 		return true;
 	}
 
@@ -317,9 +333,8 @@ void SceneEditorWindow::saveScene()
 	undoStack.onSave();
 
 	const auto strData = prefab->toYAML();
-	auto data = gsl::as_bytes(gsl::span<const char>(strData.c_str(), strData.length()));
-	FileSystem::writeFile(assetPath, data);
-	project.notifyAssetFileModified(assetPath);
+	project.writeAssetToDisk(assetPath, gsl::as_bytes(gsl::span<const char>(strData.c_str(), strData.length())));
+	gameBridge->onSceneSaved();
 }
 
 void SceneEditorWindow::markModified()
@@ -348,13 +363,15 @@ void SceneEditorWindow::onEntityAdded(const String& id, const String& parentId, 
 
 void SceneEditorWindow::onEntityRemoved(const String& id, const String& parentId, int childIndex, const EntityData& prevData)
 {
+	const String& newSelectionId = getNextSibling(parentId, childIndex);
+
 	undoStack.pushRemoved(modified, id, parentId, childIndex, prevData);
 	
 	gameBridge->onEntityRemoved(UUID(id));
 
-	entityList->onEntityRemoved(id, parentId);
+	entityList->onEntityRemoved(id, newSelectionId);
 	sceneData->reloadEntity(parentId.isEmpty() ? id : parentId);
-	onEntitySelected(parentId);
+	onEntitySelected(newSelectionId);
 
 	markModified();
 }
@@ -526,7 +543,7 @@ void SceneEditorWindow::addEntity(const String& referenceEntity, bool childOfRef
 	if (referenceEntity.isEmpty()) {
 		addEntity(String(), -1, std::move(data));
 	} else {
-		const bool isScene = sceneData->getEntityNodeData("").getData().isSceneRoot();
+		const bool isScene = prefab->isScene();
 		
 		const auto& ref = sceneData->getEntityNodeData(referenceEntity);
 		const bool canBeSibling = !ref.getParentId().isEmpty() || isScene;
@@ -536,15 +553,18 @@ void SceneEditorWindow::addEntity(const String& referenceEntity, bool childOfRef
 		}
 		
 		const bool addAsChild = (childOfReference && canBeChild) || !canBeSibling;
-		const String& parentId = addAsChild ? referenceEntity : ref.getParentId();
-
-		int childIndex = -1;
-		if (!addAsChild) {
-			const auto idx = ref.getData().getChildIndex(UUID(referenceEntity));
-			childIndex = idx ? static_cast<int>(idx.value()) : -1;
+		
+		if (addAsChild) {
+			const String& parentId = referenceEntity;
+			const int childIndex = -1;
+			addEntity(parentId, childIndex, std::move(data));
+		} else {
+			const String& parentId = ref.getParentId();
+			const auto& parentRef = sceneData->getEntityNodeData(parentId);
+			const auto idx = parentRef.getData().getChildIndex(UUID(referenceEntity));
+			const int childIndex = idx ? static_cast<int>(idx.value() + 1) : -1;
+			addEntity(parentId, childIndex, std::move(data));
 		}
-
-		addEntity(parentId, childIndex, std::move(data));
 	}
 }
 
@@ -615,6 +635,22 @@ const String* SceneEditorWindow::findParent(const String& entityId, const Entity
 	return nullptr;
 }
 
+String SceneEditorWindow::getNextSibling(const String& parentId, int childIndex) const
+{
+	const auto& node = sceneData->getEntityNodeData(parentId);
+	const auto& children = node.getData().getChildren();
+	if (children.empty()) {
+		// No other sibling, return parent
+		return parentId;
+	} else {
+		if (childIndex < static_cast<int>(children.size())) {
+			return children[childIndex].getInstanceUUID().toString();
+		} else {
+			return children.back().getInstanceUUID().toString();
+		}
+	}
+}
+
 void SceneEditorWindow::setCustomUI(std::shared_ptr<UIWidget> ui)
 {
 	if (curCustomUI) {
@@ -655,10 +691,8 @@ void SceneEditorWindow::decayTool()
 
 void SceneEditorWindow::setModified(bool enabled)
 {
-	auto button = getWidgetAs<UIButton>("saveButton");
-	button->setLabel(LocalisedString::fromHardcodedString(enabled ? "* Save" : "Save"));
-	button->setEnabled(enabled);
 	modified = enabled;
+	buttonsNeedUpdate = true;
 }
 
 bool SceneEditorWindow::isModified() const
@@ -669,6 +703,13 @@ bool SceneEditorWindow::isModified() const
 const EntityIcons& SceneEditorWindow::getEntityIcons() const
 {
 	return *entityIcons;
+}
+
+void SceneEditorWindow::refreshAssets()
+{
+	if (gameBridge) {
+		gameBridge->refreshAssets();
+	}
 }
 
 String SceneEditorWindow::serializeEntity(const EntityData& node) const
@@ -706,7 +747,7 @@ bool SceneEditorWindow::isValidEntityTree(const ConfigNode& node) const
 		return false;
 	}
 	for (const auto& [k, v]: node.asMap()) {
-		if (k != "name" && k != "uuid" && k != "components" && k != "children" && k != "prefab") {
+		if (k != "name" && k != "uuid" && k != "components" && k != "children" && k != "prefab" && k != "icon") {
 			return false;
 		}
 	}
@@ -738,4 +779,25 @@ void SceneEditorWindow::setupConsoleCommands()
 	auto controller = getWidgetAs<UIDebugConsole>("debugConsole")->getController();
 	controller->clearCommands();
 	gameBridge->setupConsoleCommands(*controller, *this);
+}
+
+void SceneEditorWindow::updateButtons()
+{
+	getWidgetAs<UIButton>("saveButton")->setEnabled(modified);
+	getWidgetAs<UIButton>("undoButton")->setEnabled(undoStack.canUndo());
+	getWidgetAs<UIButton>("redoButton")->setEnabled(undoStack.canRedo());
+}
+
+void SceneEditorWindow::undo()
+{
+	undoStack.undo(*this);
+	gameBridge->getGizmos().refreshEntity();
+	updateButtons();
+}
+
+void SceneEditorWindow::redo()
+{
+	undoStack.redo(*this);
+	gameBridge->getGizmos().refreshEntity();
+	updateButtons();
 }

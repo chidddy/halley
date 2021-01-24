@@ -112,6 +112,7 @@ void EntityList::onEntityAdded(const String& id, const String& parentId, int chi
 {
 	addEntityTree(parentId, childIndex, data);
 	list->sortItems();
+	layout();
 	list->setSelectedOptionId(id);
 }
 
@@ -124,11 +125,13 @@ void EntityList::addEntityTree(const String& parentId, int childIndex, const Ent
 	}
 }
 
-void EntityList::onEntityRemoved(const String& id, const String& parentId)
+void EntityList::onEntityRemoved(const String& id, const String& newSelectionId)
 {
 	list->removeItem(id);
 	list->sortItems();
-	list->setSelectedOptionId(parentId);
+	layout();
+	list->setSelectedOption(-1);
+	list->setSelectedOptionId(newSelectionId);
 }
 
 void EntityList::select(const String& id)

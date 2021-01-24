@@ -47,14 +47,20 @@ namespace Halley {
 		std::shared_ptr<UIWidget> makeCustomUI() override;
 
 		void onSceneLoaded(Prefab& scene) override;
+    	void onSceneSaved() override;
     	
 		static Rect4f getSpriteTreeBounds(const EntityRef& e);
 		static std::optional<Rect4f> getSpriteBounds(const EntityRef& e);
 
     	void setupConsoleCommands(UIDebugConsoleController& controller, ISceneEditorWindow& sceneEditor) override;
 
+		void refreshAssets() override;
+    
     protected:
-		virtual void onInit(std::shared_ptr<const UIColourScheme> colourScheme);
+    	Camera camera;
+		IEditorInterface* editorInterface;
+
+    	virtual void onInit(std::shared_ptr<const UIColourScheme> colourScheme);
     	
 		virtual void createServices(World& world);
 		virtual void createEntities(World& world);
@@ -70,9 +76,10 @@ namespace Halley {
 
     	virtual void onEntitySelected(std::optional<EntityRef> entity);
 
-    	Camera camera;
+    	Vector2f getMousePos() const;
+		std::unique_ptr<World> doCreateWorld(const String& stageName) const;
 
-    private:
+	private:
 		const HalleyAPI* api = nullptr;
 		Resources* resources = nullptr;
 		Resources* editorResources = nullptr;
@@ -88,8 +95,6 @@ namespace Halley {
 		Vector2f mousePos;
     	std::optional<Vector2f> holdMouseStart;
     	std::optional<Rect4f> selBox;
-
-		std::unique_ptr<World> doCreateWorld();
 
     	void moveCameraTo2D(Vector2f pos);
 		static void doGetSpriteTreeBounds(const EntityRef& e, std::optional<Rect4f>& rect);

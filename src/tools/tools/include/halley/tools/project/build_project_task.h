@@ -1,12 +1,12 @@
 #pragma once
 #include "halley/support/logger.h"
-#include "halley/tools/tasks/editor_task.h"
+#include "halley/concurrency/task.h"
 #include <regex>
 
 namespace Halley {
 	class Project;
 
-	class BuildProjectTask : public EditorTask, ILoggerSink {
+	class BuildProjectTask : public Task, ILoggerSink {
     public:
     	BuildProjectTask(Project& project);
 

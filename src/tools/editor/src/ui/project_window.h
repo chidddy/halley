@@ -27,9 +27,11 @@ namespace Halley {
 
     	const HalleyAPI& getAPI() const;
 
-    	EditorTaskSet& getTasks() const;
+    	TaskSet& getTasks() const;
 
     	void reloadProject();
+
+    	void addTask(std::unique_ptr<Task> task);
 
     protected:
 		void onUnloadDLL() override;
@@ -55,7 +57,7 @@ namespace Halley {
 		std::shared_ptr<Toolbar> toolbar;
 		std::shared_ptr<UIPagedPane> pagedPane;
 
-		std::unique_ptr<EditorTaskSet> tasks;
+		std::unique_ptr<TaskSet> tasks;
 
 		std::vector<IEditorCustomTools::ToolData> customTools;
     	bool waitingToLoadCustomUI = true;

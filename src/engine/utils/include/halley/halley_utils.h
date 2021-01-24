@@ -3,6 +3,9 @@
 namespace Halley {} // Get GitHub to realise this is C++ :3
 
 #include "concurrency/concurrent.h"
+#include "concurrency/task.h"
+#include "concurrency/task_anchor.h"
+#include "concurrency/task_set.h"
 
 #include "bytes/byte_serializer.h"
 #include "bytes/compression.h"
@@ -57,6 +60,13 @@ namespace Halley {} // Get GitHub to realise this is C++ :3
 #include "maths/uuid.h"
 
 #include "os/os.h"
+
+#include "navigation/navmesh.h"
+#include "navigation/navmesh_generator.h"
+#include "navigation/navmesh_set.h"
+#include "navigation/navigation_query.h"
+#include "navigation/navigation_path.h"
+#include "navigation/navigation_path_follower.h"
 
 #include "plugin/plugin.h"
 

@@ -1,13 +1,10 @@
 #include "taskbar.h"
-
-
 #include "task_details.h"
 #include "task_display.h"
-#include "halley/tools/tasks/editor_task_set.h"
 
 using namespace Halley;
 
-TaskBar::TaskBar(UIFactory& ui, EditorTaskSet& taskSet, const HalleyAPI& api)
+TaskBar::TaskBar(UIFactory& ui, TaskSet& taskSet, const HalleyAPI& api)
 	: UIWidget("taskBar", Vector2f(150.0f, 80.0), {}, Vector4f(160, 8, 10, 8))
 	, factory(ui)
 	, resources(ui.getResources())
@@ -47,7 +44,7 @@ void TaskBar::update(Time time, bool moved)
 
 	// Ensure that all tasks have a display associated
 	for (auto& t : taskData) {
-		if (t->isVisible() && t->getStatus() == EditorTaskStatus::Started) {
+		if (t->isVisible() && t->getStatus() == TaskStatus::Started) {
 			getDisplayFor(t);
 		}
 	}
@@ -118,7 +115,7 @@ void TaskBar::showTaskDetails(const TaskDisplay& taskDisplay)
 	waitingToShowTaskDisplay = true;
 }
 
-std::shared_ptr<TaskDisplay> TaskBar::getDisplayFor(const std::shared_ptr<EditorTaskAnchor>& task)
+std::shared_ptr<TaskDisplay> TaskBar::getDisplayFor(const std::shared_ptr<TaskAnchor>& task)
 {
 	for (auto& t: tasks) {
 		const auto& existingTask = t->getTask();
@@ -129,7 +126,7 @@ std::shared_ptr<TaskDisplay> TaskBar::getDisplayFor(const std::shared_ptr<Editor
 		}
 
 		// Replace error:
-		if (existingTask->getStatus() == EditorTaskStatus::Done && existingTask->getName() == task->getName()) {
+		if (existingTask->getStatus() == TaskStatus::Done && existingTask->getName() == task->getName()) {
 			t->setTask(task);
 			return t;
 		}

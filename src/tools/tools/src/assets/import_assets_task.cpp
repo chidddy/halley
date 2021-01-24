@@ -14,7 +14,7 @@
 using namespace Halley;
 
 ImportAssetsTask::ImportAssetsTask(String taskName, ImportAssetsDatabase& db, std::shared_ptr<AssetImporter> importer, Path assetsPath, Vector<ImportAssetsDatabaseEntry> files, std::vector<String> deletedAssets, Project& project, bool packAfter)
-	: EditorTask(taskName, true, true)
+	: Task(taskName, true, true)
 	, db(db)
 	, importer(importer)
 	, assetsPath(assetsPath)
@@ -82,7 +82,7 @@ void ImportAssetsTask::run()
 			}
 
 			if (packAfter) {
-				addContinuation(EditorTaskAnchor(std::make_unique<AssetPackerTask>(project, std::move(outputAssets), std::move(deletedAssets))));
+				addContinuation(std::make_unique<AssetPackerTask>(project, std::move(outputAssets), std::move(deletedAssets)));
 			}
 		}
 	}

@@ -338,6 +338,19 @@ std::shared_ptr<Material> Sprite::getMutableMaterialPtr()
 	return material;
 }
 
+bool Sprite::hasCompatibleMaterial(const Material& other) const
+{
+	return false;
+	
+	if (!material) {
+		return false;
+	}
+	if (&material->getDefinition() != &other.getDefinition()) {
+		return false;
+	}
+	return true;
+}
+
 Sprite& Sprite::setImageData(const Texture& image)
 {
 	setSize(Vector2f(image.getSize()));

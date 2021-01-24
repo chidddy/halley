@@ -138,17 +138,20 @@ namespace Halley {
         explicit ConfigNode( DelType value );
         explicit ConfigNode( IdxType value );
 
-        template < typename T >
-        explicit ConfigNode( const std::vector< T >& sequence )
-        {
-            SequenceType seq;
-            seq.reserve( sequence.size() );
-            for ( auto& e : sequence )
-            {
-                seq.push_back( ConfigNode( e ) );
-            }
-            *this = seq;
-        }
+		template <typename T>
+		explicit ConfigNode(const std::vector<T>& sequence)
+		{
+			SequenceType seq;
+			seq.reserve(sequence.size());
+			for (auto& e: sequence) {
+				if constexpr (HasToConfigNode<T>::value) {
+					seq.push_back(e.toConfigNode());
+				} else {
+					seq.push_back(ConfigNode(e));
+				}
+			}
+			*this = seq;
+		}
 
         ~ConfigNode();
 
@@ -177,17 +180,20 @@ namespace Halley {
         ConfigNode& operator=( DelType value );
         ConfigNode& operator=( IdxType value );
 
-        template < typename T >
-        ConfigNode& operator=( const std::vector< T >& sequence )
-        {
-            SequenceType seq;
-            seq.reserve( sequence.size() );
-            for ( auto& e : sequence )
-            {
-                seq.push_back( ConfigNode( e ) );
-            }
-            return *this = seq;
-        }
+		template <typename T>
+		ConfigNode& operator=(const std::vector<T>& sequence)
+		{
+			SequenceType seq;
+			seq.reserve(sequence.size());
+			for (auto& e: sequence) {
+				if constexpr (HasToConfigNode<T>::value) {
+					seq.push_back(e.toConfigNode());
+				} else {
+					seq.push_back(ConfigNode(e));
+				}
+			}
+			return *this = seq;
+		}
 
         bool operator==( const ConfigNode& other ) const;
         bool operator!=( const ConfigNode& other ) const;
@@ -223,37 +229,34 @@ namespace Halley {
         Vector4i asVector4i( Vector4i defaultValue ) const;
         Vector4f asVector4f( Vector4f defaultValue ) const;
 
-        template < typename T >
-        std::vector< T > asVector() const
-        {
-            if ( type == ConfigNodeType::Sequence )
-            {
-                std::vector< T > result;
-                result.reserve( asSequence().size() );
-                for ( const auto& e : asSequence() )
-                {
-                    result.emplace_back( e.convertTo( Tag< T >() ) );
-                }
-                return result;
-            }
-            else
-            {
-                throw Exception( "Can't convert " + getNodeDebugId() + " from " + toString( getType() ) + " to std::vector<T>.", HalleyExceptions::Resources );
-            }
-        }
+		template <typename T>
+		std::vector<T> asVector() const
+		{
+			if (type == ConfigNodeType::Sequence) {
+				std::vector<T> result;
+				result.reserve(asSequence().size());
+				for (const auto& e : asSequence()) {
+					if constexpr (HasConfigNodeConstructor<T>::value) {
+						result.emplace_back(T(e));
+					} else {
+						result.emplace_back(e.convertTo(Tag<T>()));
+					}
+				}
+				return result;
+			} else {
+				throw Exception("Can't convert " + getNodeDebugId() + " from " + toString(getType()) + " to std::vector<T>.", HalleyExceptions::Resources);
+			}
+		}
 
-        template < typename T >
-        std::vector< T > asVector( const std::vector< T >& defaultValue ) const
-        {
-            if ( type == ConfigNodeType::Sequence )
-            {
-                return asVector< T >();
-            }
-            else
-            {
-                return defaultValue;
-            }
-        }
+		template <typename T>
+		std::vector<T> asVector(const std::vector<T>& defaultValue) const
+		{
+			if (type == ConfigNodeType::Sequence) {
+				return asVector<T>();
+			} else {
+				return defaultValue;
+			}
+		}
 
         const SequenceType& asSequence() const;
         const MapType& asMap() const;

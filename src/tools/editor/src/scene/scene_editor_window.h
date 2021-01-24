@@ -65,6 +65,8 @@ namespace Halley {
 		bool isModified() const;
 		const EntityIcons& getEntityIcons() const;
 
+		void refreshAssets();
+
 	protected:
 		void update(Time t, bool moved) override;
 
@@ -104,6 +106,7 @@ namespace Halley {
 
 		UndoStack undoStack;
 		bool modified = false;
+		bool buttonsNeedUpdate = false;
 
 		void makeUI();
 		void onEntitySelected(const String& id);
@@ -112,6 +115,7 @@ namespace Halley {
 
 		String findParent(const String& entityId) const;
 		const String* findParent(const String& entityId, const EntityTree& tree, const String& prev) const;
+		String getNextSibling(const String& parentId, int childIndex) const;
 
 		void setCustomUI(std::shared_ptr<UIWidget> ui);
 		void setToolUI(std::shared_ptr<UIWidget> ui);
@@ -128,5 +132,10 @@ namespace Halley {
 
 		void toggleConsole();
 		void setupConsoleCommands();
+
+		void updateButtons();
+
+		void undo();
+		void redo();
 	};
 }

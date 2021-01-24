@@ -32,8 +32,8 @@ ProjectWindow::ProjectWindow(EditorUIFactory& factory, HalleyEditor& editor, Pro
 	});
 	project.addAssetLoadedListener(this);
 
-	tasks = std::make_unique<EditorTaskSet>();
-	tasks->addTask(EditorTaskAnchor(std::make_unique<CheckAssetsTask>(project, false)));
+	tasks = std::make_unique<TaskSet>();
+	tasks->addTask(std::make_unique<CheckAssetsTask>(project, false));
 
 	makeUI();
 }
@@ -243,7 +243,7 @@ const HalleyAPI& ProjectWindow::getAPI() const
 	return api;
 }
 
-EditorTaskSet& ProjectWindow::getTasks() const
+TaskSet& ProjectWindow::getTasks() const
 {
 	return *tasks;
 }
@@ -265,4 +265,9 @@ void ProjectWindow::openAssetFinder()
 void ProjectWindow::reloadProject()
 {
 	destroy();
+}
+
+void ProjectWindow::addTask(std::unique_ptr<Task> task)
+{
+	tasks->addTask(std::move(task));
 }

@@ -1,13 +1,13 @@
 #pragma once
-#include "../tasks/editor_task.h"
 #include "import_assets_database.h"
+#include "halley/concurrency/task.h"
 #include "halley/file/directory_monitor.h"
 
 namespace Halley
 {
 	class Project;
 
-	class CheckAssetsTask : public EditorTask
+	class CheckAssetsTask : public Task
 	{
 	public:
 		CheckAssetsTask(Project& project, bool oneShot);

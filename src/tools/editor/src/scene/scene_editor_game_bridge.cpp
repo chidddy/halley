@@ -2,13 +2,15 @@
 #include "scene_editor_gizmo_collection.h"
 #include "halley/tools/project/project.h"
 #include "src/project/core_api_wrapper.h"
+#include "src/ui/project_window.h"
 using namespace Halley;
 
 
-SceneEditorGameBridge::SceneEditorGameBridge(const HalleyAPI& api, Resources& resources, UIFactory& factory, Project& project)
+SceneEditorGameBridge::SceneEditorGameBridge(const HalleyAPI& api, Resources& resources, UIFactory& factory, Project& project, ProjectWindow& projectWindow)
 	: api(api)
 	, resources(resources)
 	, project(project)
+	, projectWindow(projectWindow)
 	, factory(factory)
 {
 	gizmos = std::make_unique<SceneEditorGizmoCollection>(factory, resources);
@@ -174,10 +176,34 @@ void SceneEditorGameBridge::onSceneLoaded(Prefab& scene)
 	}
 }
 
+void SceneEditorGameBridge::onSceneSaved()
+{
+	if (interfaceReady) {
+		interface->onSceneSaved();
+	}
+}
+
 void SceneEditorGameBridge::setupConsoleCommands(UIDebugConsoleController& controller, ISceneEditorWindow& sceneEditor)
 {
 	if (interfaceReady) {
 		interface->setupConsoleCommands(controller, sceneEditor);
+	}
+}
+
+bool SceneEditorGameBridge::saveAsset(const Path& path, gsl::span<const gsl::byte> data)
+{
+	return project.writeAssetToDisk(path, data);
+}
+
+void SceneEditorGameBridge::addTask(std::unique_ptr<Task> task)
+{
+	projectWindow.addTask(std::move(task));
+}
+
+void SceneEditorGameBridge::refreshAssets()
+{
+	if (interfaceReady) {
+		interface->refreshAssets();
 	}
 }
 
@@ -204,6 +230,7 @@ void SceneEditorGameBridge::load()
 		context.editorResources = &resources;
 		context.api = gameAPI.get();
 		context.gizmos = gizmos.get();
+		context.editorInterface = this;
 
 		guardedRun([&]() {
 			interface->init(context);

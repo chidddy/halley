@@ -30,6 +30,7 @@ void SceneEditor::init(SceneEditorContext& context)
 	resources = context.resources;
 	editorResources = context.editorResources;
 	gizmoCollection = context.gizmos;
+	editorInterface = context.editorInterface;
 
 	api->core->getStatics().setupGlobals();
 
@@ -106,7 +107,7 @@ bool SceneEditor::isReadyToCreateWorld() const
 
 void SceneEditor::createWorld(std::shared_ptr<const UIColourScheme> colourScheme)
 {
-	world = doCreateWorld();
+	world = doCreateWorld(getSceneEditorStageName());
 	createServices(*world);
 	createEntities(*world);
 	cameraEntityIds = createCamera();
@@ -141,13 +142,13 @@ void SceneEditor::onSceneLoaded(Prefab& scene)
 {
 }
 
-std::unique_ptr<World> SceneEditor::doCreateWorld()
+void SceneEditor::onSceneSaved()
 {
-	auto world = std::make_unique<World>(getAPI(), getGameResources(), true, CreateEntityFunctions::getCreateComponent());
-	const auto& sceneConfig = getGameResources().get<ConfigFile>(getSceneEditorStageName())->getRoot();
-	world->loadSystems(sceneConfig, CreateEntityFunctions::getCreateSystem());
+}
 
-	return world;
+std::unique_ptr<World> SceneEditor::doCreateWorld(const String& stageName) const
+{
+	return World::make(getAPI(), getGameResources(), stageName, true);
 }
 
 void SceneEditor::createServices(World& world)
@@ -211,6 +212,11 @@ std::vector<EntityId> SceneEditor::createCamera()
 
 void SceneEditor::onEntitySelected(std::optional<EntityRef> entity)
 {
+}
+
+Vector2f SceneEditor::getMousePos() const
+{
+	return mousePos;
 }
 
 const std::vector<EntityId>& SceneEditor::getCameraIds() const
@@ -364,6 +370,10 @@ std::optional<Rect4f> SceneEditor::getSpriteBounds(const EntityRef& e)
 }
 
 void SceneEditor::setupConsoleCommands(UIDebugConsoleController& controller, ISceneEditorWindow& sceneEditor)
+{
+}
+
+void SceneEditor::refreshAssets()
 {
 }
 

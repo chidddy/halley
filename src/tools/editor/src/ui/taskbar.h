@@ -1,18 +1,17 @@
 #pragma once
 
-#include "halley/tools/tasks/editor_task.h"
 #include "prec.h"
 
 namespace Halley
 {
 	class TaskDetails;
-	class EditorTaskSet;
+	class TaskSet;
 	class TaskDisplay;
 	
 	class TaskBar : public UIWidget
 	{
 	public:
-		TaskBar(UIFactory& factory, EditorTaskSet& taskSet, const HalleyAPI& api);
+		TaskBar(UIFactory& factory, TaskSet& taskSet, const HalleyAPI& api);
 		~TaskBar();
 
 		void update(Time time, bool moved) override;
@@ -23,7 +22,7 @@ namespace Halley
 	private:
 		UIFactory& factory;
 		Resources& resources;
-		EditorTaskSet& taskSet;
+		TaskSet& taskSet;
 		const HalleyAPI& api;
 		std::vector<std::shared_ptr<TaskDisplay>> tasks;
 
@@ -37,6 +36,6 @@ namespace Halley
 		bool waitingToShowTaskDisplay = false;
 		std::shared_ptr<TaskDetails> taskDetails;
 
-		std::shared_ptr<TaskDisplay> getDisplayFor(const std::shared_ptr<EditorTaskAnchor>& task);
+		std::shared_ptr<TaskDisplay> getDisplayFor(const std::shared_ptr<TaskAnchor>& task);
 	};
 }

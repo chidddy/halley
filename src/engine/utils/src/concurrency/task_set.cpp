@@ -1,15 +1,17 @@
-#include "halley/tools/tasks/editor_task_set.h"
+#include "halley/concurrency/task_set.h"
 #include <thread>
 #include <chrono>
 #include <iostream>
 
+#include "halley/concurrency/task_anchor.h"
+
 using namespace Halley;
 using namespace std::chrono_literals;
 
-EditorTaskSet::EditorTaskSet() 
+TaskSet::TaskSet() 
 {}
 
-EditorTaskSet::~EditorTaskSet()
+TaskSet::~TaskSet()
 {
 	// We're not going anywhere until all those tasks are done; cancel them all to speed it up
 	for (auto& t : tasks) {
@@ -26,9 +28,9 @@ EditorTaskSet::~EditorTaskSet()
 	}
 }
 
-void EditorTaskSet::update(Time time)
+void TaskSet::update(Time time)
 {
-	Vector<EditorTaskAnchor> toAdd;
+	Vector<std::unique_ptr<Task>> toAdd;
 
 	auto next = tasks.begin();
 	for (auto iter = tasks.begin(); iter != tasks.end(); iter = next) {
@@ -42,7 +44,7 @@ void EditorTaskSet::update(Time time)
 			toAdd.push_back(std::move(t));
 		}
 
-		if (task->getStatus() == EditorTaskStatus::Done) {
+		if (task->getStatus() == TaskStatus::Done) {
 			auto newTasks = task->getContinuations();
 			for (auto& t : newTasks) {
 				toAdd.push_back(std::move(t));
@@ -63,21 +65,26 @@ void EditorTaskSet::update(Time time)
 	}
 }
 
-void EditorTaskSet::addTask(EditorTaskAnchor&& task)
+void TaskSet::addTask(std::shared_ptr<TaskAnchor> task)
 {
-	task.setId(nextId++);
-	tasks.emplace_back(std::make_shared<EditorTaskAnchor>(std::move(task)));
+	tasks.emplace_back(std::move(task));
+	tasks.back()->setId(nextId++);
 	if (listener) {
 		listener->onTaskAdded(tasks.back());
 	}
 }
 
-void EditorTaskSet::setListener(EditorTaskSetListener& l)
+void TaskSet::addTask(std::unique_ptr<Task> task)
+{
+	addTask(std::make_shared<TaskAnchor>(std::move(task)));
+}
+
+void TaskSet::setListener(TaskSetListener& l)
 {
 	listener = &l;
 }
 
-const std::list<std::shared_ptr<EditorTaskAnchor>>& EditorTaskSet::getTasks() const
+const std::list<std::shared_ptr<TaskAnchor>>& TaskSet::getTasks() const
 {
 	return tasks;
 }

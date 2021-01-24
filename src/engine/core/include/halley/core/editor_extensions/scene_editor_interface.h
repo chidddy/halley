@@ -8,6 +8,7 @@
 #include <optional>
 
 namespace Halley {
+	class Task;
 	class Prefab;
 	class ISceneEditorWindow;
 	class UIDebugConsoleController;
@@ -86,12 +87,21 @@ namespace Halley {
 		void clear();
 	};
 
+	class IEditorInterface {
+	public:
+		virtual ~IEditorInterface() = default;
+
+		virtual bool saveAsset(const Path& path, gsl::span<const gsl::byte> data) = 0;
+		virtual void addTask(std::unique_ptr<Task> task) = 0;
+	};
+
     class SceneEditorContext {
     public:
         const HalleyAPI* api;
         Resources* resources;
         Resources* editorResources;
         ISceneEditorGizmoCollection* gizmos;
+    	IEditorInterface* editorInterface;
     };
 
     class IComponentEditorFieldFactory {
@@ -136,6 +146,8 @@ namespace Halley {
     	virtual std::shared_ptr<UIWidget> makeCustomUI() = 0;
     	virtual void setupConsoleCommands(UIDebugConsoleController& controller, ISceneEditorWindow& sceneEditor) = 0;
         virtual void onSceneLoaded(Prefab& scene) = 0;
+    	virtual void onSceneSaved() = 0;
+        virtual void refreshAssets() = 0;
     };
 
 	class EntityTree {
@@ -195,6 +207,7 @@ namespace Halley {
         virtual bool update(Time time, const Camera& camera, const SceneEditorInputState& inputState, SceneEditorOutputState& outputState) = 0;
         virtual void draw(Painter& painter) = 0;
         virtual void setSelectedEntity(const std::optional<EntityRef>& entity, EntityData& entityData) = 0;
+		virtual void refreshEntity() = 0;
         virtual std::shared_ptr<UIWidget> setTool(SceneEditorTool tool, const String& componentName, const String& fieldName, const ConfigNode& options) = 0;
 		virtual void deselect() = 0;
 	};
