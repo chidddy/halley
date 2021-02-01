@@ -542,4 +542,19 @@ namespace Halley
             }
         }
     };
+
+    template<>
+	class ConfigNodeSerializer<ConfigNode>
+	{
+	public:
+		ConfigNode serialize(const ConfigNode& item, const ConfigNodeSerializationContext& context)
+		{
+			return ConfigNode(item);
+		}
+		
+		ConfigNode deserialize(const ConfigNodeSerializationContext& context, const ConfigNode& node)
+		{
+			return ConfigNode(node);
+		}
+	};
 } // namespace Halley

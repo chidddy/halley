@@ -10,57 +10,7 @@ ConfigNode::ConfigNode()
 
 ConfigNode::ConfigNode( const ConfigNode& other )
 {
-    switch ( other.type )
-    {
-    case ConfigNodeType::String:
-        *this = other.asString();
-        break;
-    case ConfigNodeType::Sequence:
-    case ConfigNodeType::DeltaSequence:
-        *this = other.asSequence();
-        break;
-    case ConfigNodeType::Map:
-    case ConfigNodeType::DeltaMap:
-        *this = other.asMap();
-        break;
-    case ConfigNodeType::Int:
-        *this = other.asInt();
-        break;
-    case ConfigNodeType::Float:
-        *this = other.asFloat();
-        break;
-    case ConfigNodeType::Int2:
-    case ConfigNodeType::Idx:
-        *this = other.asVector2i();
-        break;
-    case ConfigNodeType::Int3:
-        *this = other.asVector3i();
-        break;
-    case ConfigNodeType::Int4:
-        *this = other.asVector4i();
-        break;
-    case ConfigNodeType::Float2:
-        *this = other.asVector2f();
-        break;
-    case ConfigNodeType::Float3:
-        *this = other.asVector3f();
-        break;
-    case ConfigNodeType::Float4:
-        *this = other.asVector4f();
-        break;
-    case ConfigNodeType::Bytes:
-        *this = other.asBytes();
-        break;
-    case ConfigNodeType::Undefined:
-    case ConfigNodeType::Noop:
-    case ConfigNodeType::Del:
-        break;
-    default:
-        throw Exception( "Unknown configuration node type.", HalleyExceptions::Resources );
-    }
-
-    type = other.type;
-    auxData = other.auxData;
+	operator=(other);
 }
 
 ConfigNode::ConfigNode( ConfigNode&& other ) noexcept
@@ -168,23 +118,69 @@ ConfigNode::~ConfigNode()
     reset();
 }
 
-ConfigNode& ConfigNode::operator=( ConfigNode&& other ) noexcept
+ConfigNode& ConfigNode::operator=(const ConfigNode& other)
+{
+	switch (other.type) {
+		case ConfigNodeType::String:
+			*this = other.asString();
+			break;
+		case ConfigNodeType::Sequence:
+		case ConfigNodeType::DeltaSequence:
+			*this = other.asSequence();
+			break;
+		case ConfigNodeType::Map:
+		case ConfigNodeType::DeltaMap:
+			*this = other.asMap();
+			break;
+		case ConfigNodeType::Int:
+			*this = other.asInt();
+			break;
+		case ConfigNodeType::Float:
+			*this = other.asFloat();
+			break;
+		case ConfigNodeType::Int2:
+		case ConfigNodeType::Idx:
+			*this = other.asVector2i();
+			break;
+		case ConfigNodeType::Float2:
+			*this = other.asVector2f();
+			break;
+		case ConfigNodeType::Bytes:
+			*this = other.asBytes();
+			break;
+		case ConfigNodeType::Undefined:
+		case ConfigNodeType::Noop:
+		case ConfigNodeType::Del:
+			break;
+		default:
+			throw Exception("Unknown configuration node type.", HalleyExceptions::Resources);
+	}
+
+	type = other.type;
+	auxData = other.auxData;
+
+	return *this;
+}
+
+ConfigNode& ConfigNode::operator=(ConfigNode&& other) noexcept
 {
     reset();
 
-    type = other.type;
-    rawPtrData = other.rawPtrData;
-    intData = other.intData;
-    floatData = other.floatData;
-    vec2iData = other.vec2iData;
-    vec2fData = other.vec2fData;
-    parent = std::move( other.parent );
-    auxData = other.auxData;
-
-    other.type = ConfigNodeType::Undefined;
-    other.rawPtrData = nullptr;
-
-    return *this;
+	type = other.type;
+	rawPtrData = other.rawPtrData;
+	intData = other.intData;
+	floatData = other.floatData;
+	vec2iData = other.vec2iData;
+	vec2fData = other.vec2fData;
+#if defined(STORE_CONFIG_NODE_PARENTING)
+	parent = std::move(other.parent);
+#endif
+	auxData = other.auxData;
+	
+	other.type = ConfigNodeType::Undefined;
+	other.rawPtrData = nullptr;
+	
+	return *this;
 }
 
 ConfigNode& ConfigNode::operator=( bool value )
@@ -447,19 +443,19 @@ void ConfigNode::serialize( Serializer& s ) const
         throw Exception( "Unknown configuration node type.", HalleyExceptions::Resources );
     }
 
-    const auto* state = s.getState< ConfigFileSerializationState >();
-    if ( state && state->storeFilePosition )
-    {
-        if ( parent )
-        {
-            s << parent->line;
-            s << parent->column;
-        }
-        else
-        {
-            s << 0 << 0;
-        }
-    }
+	const auto* state = s.getState<ConfigFileSerializationState>();
+	if (state && state->storeFilePosition) {
+#if defined(STORE_CONFIG_NODE_PARENTING)
+		if (parent) {
+			s << parent->line;
+			s << parent->column;
+		} else {
+			s << 0 << 0;
+		}
+#else
+		s << 0 << 0;
+#endif
+	}
 }
 
 void ConfigNode::deserialize( Deserializer& s )
@@ -526,20 +522,19 @@ void ConfigNode::deserialize( Deserializer& s )
 
     type = incomingType;
 
-    const auto state = s.getState< ConfigFileSerializationState >();
-    if ( state && state->storeFilePosition )
-    {
-        if ( parent )
-        {
-            s >> parent->line;
-            s >> parent->column;
-        }
-        else
-        {
-            int dummy;
-            s >> dummy >> dummy;
-        }
-    }
+	const auto state = s.getState<ConfigFileSerializationState>();
+	if (state && state->storeFilePosition) {
+		[[maybe_unused]] int line;
+		[[maybe_unused]] int column;
+		s >> line >> column;
+
+#if defined(STORE_CONFIG_NODE_PARENTING)
+		if (parent) {
+			parent->line = line;
+			parent->column = column;
+		}
+#endif
+	}
 }
 
 int ConfigNode::asInt() const
@@ -1079,20 +1074,19 @@ ConfigNode& ConfigNode::operator[]( size_t idx )
 
 const ConfigNode& ConfigNode::operator[]( const String& key ) const
 {
-    auto& map = asMap();
-    auto iter = map.find( key );
-    if ( iter != map.end() )
-    {
-        return iter->second;
-    }
-    else
-    {
-        // WARNING: NOT THREAD SAFE
-        undefinedConfigNode.setParent( this, -1 );
-        undefinedConfigNode.parent->file = parent ? parent->file : nullptr;
-        undefinedConfigNodeName = key;
-        return undefinedConfigNode;
-    }
+	auto& map = asMap();
+	auto iter = map.find(key);
+	if (iter != map.end()) {
+		return iter->second;
+	} else {
+		// WARNING: NOT THREAD SAFE
+#if defined(STORE_CONFIG_NODE_PARENTING)
+		undefinedConfigNode.setParent(this, -1);
+		undefinedConfigNode.parent->file = parent ? parent->file : nullptr;
+#endif
+		undefinedConfigNodeName = key;
+		return undefinedConfigNode;
+	}
 }
 
 const ConfigNode& ConfigNode::operator[]( size_t idx ) const
@@ -1144,49 +1138,47 @@ void ConfigNode::reset()
 
 void ConfigNode::setOriginalPosition( int l, int c )
 {
-    if ( !parent )
-    {
-        parent = std::make_unique< ParentingInfo >();
-    }
-    parent->line = l;
-    parent->column = c;
+#if defined(STORE_CONFIG_NODE_PARENTING)
+	if (!parent) {
+		parent = std::make_unique<ParentingInfo>();
+	}
+	parent->line = l;
+	parent->column = c;
+#endif
 }
 
 void ConfigNode::setParent( const ConfigNode* p, int idx )
 {
-    if ( !parent )
-    {
-        parent = std::make_unique< ParentingInfo >();
-    }
-    parent->node = p;
-    parent->idx = idx;
+#if defined(STORE_CONFIG_NODE_PARENTING)
+	if (!parent) {
+		parent = std::make_unique<ParentingInfo>();
+	}
+	parent->node = p;
+	parent->idx = idx;
+#endif
 }
 
 void ConfigNode::propagateParentingInformation( const ConfigFile* file )
 {
-    if ( !parent )
-    {
-        parent = std::make_unique< ParentingInfo >();
-    }
-    parent->file = file;
-    if ( type == ConfigNodeType::Sequence )
-    {
-        int i = 0;
-        for ( auto& e : asSequence() )
-        {
-            e.setParent( this, i++ );
-            e.propagateParentingInformation( file );
-        }
-    }
-    else if ( type == ConfigNodeType::Map )
-    {
-        int i = 0;
-        for ( auto& e : asMap() )
-        {
-            e.second.setParent( this, i++ );
-            e.second.propagateParentingInformation( file );
-        }
-    }
+#if defined(STORE_CONFIG_NODE_PARENTING)
+	if (!parent) {
+		parent = std::make_unique<ParentingInfo>();
+	}
+	parent->file = file;
+	if (type == ConfigNodeType::Sequence) {
+		int i = 0;
+		for (auto& e: asSequence()) {
+			e.setParent(this, i++);
+			e.propagateParentingInformation(file);
+		}
+	} else if (type == ConfigNodeType::Map) {
+		int i = 0;
+		for (auto& e: asMap()) {
+			e.second.setParent(this, i++);
+			e.second.propagateParentingInformation(file);
+		}
+	}
+#endif
 }
 
 String ConfigNode::getNodeDebugId() const
@@ -1253,60 +1245,49 @@ String ConfigNode::getNodeDebugId() const
         break;
     }
 
-    if ( parent )
-    {
-        String assetId = "unknown";
-        if ( parent->file )
-        {
-            assetId = parent->file->getAssetId();
-        }
-        return "Node \"" + backTrackFullNodeName() + "\" (" + value + ") at \"" + assetId + "(" + toString( parent->line + 1 ) + ":" + toString( parent->column + 1 ) + ")\"";
-    }
-    else
-    {
-        return "Node (" + value + ")";
-    }
+#if defined(STORE_CONFIG_NODE_PARENTING)
+	if (parent) {
+		String assetId = "unknown";
+		if (parent->file) {
+			assetId = parent->file->getAssetId();
+		}
+		return "Node \"" + backTrackFullNodeName() + "\" (" + value + ") at \"" + assetId + "(" + toString(parent->line + 1) + ":" + toString(parent->column + 1) + ")\"";
+	}
+#endif
+	
+	return "Node (" + value + ")";
 }
 
 String ConfigNode::backTrackFullNodeName() const
 {
-    if ( parent && parent->node )
-    {
-        if ( parent->node->type == ConfigNodeType::Sequence )
-        {
-            return parent->node->backTrackFullNodeName() + "[" + toString( parent->idx ) + "]";
-        }
-        else if ( parent->node->type == ConfigNodeType::Map )
-        {
-            auto& parentMap = parent->node->asMap();
-            int i = 0;
-            String name = "?";
-            if ( parent->idx == -1 )
-            {
-                name = ConfigNode::undefinedConfigNodeName;
-            }
-            else
-            {
-                for ( auto& e : parentMap )
-                {
-                    if ( i++ == parent->idx )
-                    {
-                        name = e.first;
-                        break;
-                    }
-                }
-            }
-            return parent->node->backTrackFullNodeName() + "." + name;
-        }
-        else
-        {
-            return "?";
-        }
-    }
-    else
-    {
-        return "~";
-    }
+#if defined(STORE_CONFIG_NODE_PARENTING)
+	if (parent && parent->node) {
+		if (parent->node->type == ConfigNodeType::Sequence) {
+			return parent->node->backTrackFullNodeName() + "[" + toString(parent->idx) + "]";
+		} else if (parent->node->type == ConfigNodeType::Map) {
+			auto& parentMap = parent->node->asMap();
+			int i = 0;
+			String name = "?";
+			if (parent->idx == -1) {
+				name = ConfigNode::undefinedConfigNodeName;
+			} else {
+				for (auto& e: parentMap) {
+					if (i++ == parent->idx) {
+						name = e.first;
+						break;
+					}
+				}
+			}
+			return parent->node->backTrackFullNodeName() + "." + name;
+		} else {
+			return "?";
+		}
+	} else {
+		return "~";
+	}
+#else
+	return "";
+#endif
 }
 
 int ConfigNode::convertTo( Tag< int > tag ) const
