@@ -66,6 +66,7 @@ Bytes ShaderImporter::convertHLSL(const String& name, ShaderType type, const Byt
 	options.shiftAllSamplersBindings = 0;
 	options.shiftAllTexturesBindings = 0;
 	options.shiftAllUABuffersBindings = 0;
+	options.inheritCombinedSamplerBindings = true;
 
 	Compiler::SourceDesc source = {};
 	source.fileName = name.c_str();
