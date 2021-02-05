@@ -120,40 +120,103 @@ ConfigNode::~ConfigNode()
 
 ConfigNode& ConfigNode::operator=(const ConfigNode& other)
 {
+/*
+    switch ( other.type )
+    {
+    case ConfigNodeType::String:
+        *this = other.asString();
+        break;
+    case ConfigNodeType::Sequence:
+    case ConfigNodeType::DeltaSequence:
+        *this = other.asSequence();
+        break;
+    case ConfigNodeType::Map:
+    case ConfigNodeType::DeltaMap:
+        *this = other.asMap();
+        break;
+    case ConfigNodeType::Int:
+        *this = other.asInt();
+        break;
+    case ConfigNodeType::Float:
+        *this = other.asFloat();
+        break;
+    case ConfigNodeType::Int2:
+    case ConfigNodeType::Idx:
+        *this = other.asVector2i();
+        break;
+    case ConfigNodeType::Int3:
+        *this = other.asVector3i();
+        break;
+    case ConfigNodeType::Int4:
+        *this = other.asVector4i();
+        break;
+    case ConfigNodeType::Float2:
+        *this = other.asVector2f();
+        break;
+    case ConfigNodeType::Float3:
+        *this = other.asVector3f();
+        break;
+    case ConfigNodeType::Float4:
+        *this = other.asVector4f();
+        break;
+    case ConfigNodeType::Bytes:
+        *this = other.asBytes();
+        break;
+    case ConfigNodeType::Undefined:
+    case ConfigNodeType::Noop:
+    case ConfigNodeType::Del:
+        break;
+    default:
+        throw Exception( "Unknown configuration node type.", HalleyExceptions::Resources );
+    }
+*/
+
 	switch (other.type) {
-		case ConfigNodeType::String:
-			*this = other.asString();
-			break;
-		case ConfigNodeType::Sequence:
-		case ConfigNodeType::DeltaSequence:
-			*this = other.asSequence();
-			break;
-		case ConfigNodeType::Map:
-		case ConfigNodeType::DeltaMap:
-			*this = other.asMap();
-			break;
-		case ConfigNodeType::Int:
-			*this = other.asInt();
-			break;
-		case ConfigNodeType::Float:
-			*this = other.asFloat();
-			break;
-		case ConfigNodeType::Int2:
-		case ConfigNodeType::Idx:
-			*this = other.asVector2i();
-			break;
-		case ConfigNodeType::Float2:
-			*this = other.asVector2f();
-			break;
-		case ConfigNodeType::Bytes:
-			*this = other.asBytes();
-			break;
-		case ConfigNodeType::Undefined:
-		case ConfigNodeType::Noop:
-		case ConfigNodeType::Del:
-			break;
-		default:
-			throw Exception("Unknown configuration node type.", HalleyExceptions::Resources);
+    case ConfigNodeType::String:
+        *this = other.asString();
+        break;
+    case ConfigNodeType::Sequence:
+    case ConfigNodeType::DeltaSequence:
+        *this = other.asSequence();
+        break;
+    case ConfigNodeType::Map:
+    case ConfigNodeType::DeltaMap:
+        *this = other.asMap();
+        break;
+    case ConfigNodeType::Int:
+        *this = other.asInt();
+        break;
+    case ConfigNodeType::Float:
+        *this = other.asFloat();
+        break;
+    case ConfigNodeType::Int2:
+    case ConfigNodeType::Idx:
+        *this = other.asVector2i();
+        break;
+    case ConfigNodeType::Int3:
+        *this = other.asVector3i();
+        break;
+    case ConfigNodeType::Int4:
+        *this = other.asVector4i();
+        break;
+    case ConfigNodeType::Float2:
+        *this = other.asVector2f();
+        break;
+    case ConfigNodeType::Float3:
+        *this = other.asVector3f();
+        break;
+    case ConfigNodeType::Float4:
+        *this = other.asVector4f();
+        break;
+    case ConfigNodeType::Bytes:
+        *this = other.asBytes();
+        break;
+    case ConfigNodeType::Undefined:
+    case ConfigNodeType::Noop:
+    case ConfigNodeType::Del:
+        break;
+	default:
+		throw Exception("Unknown configuration node type.", HalleyExceptions::Resources);
 	}
 
 	type = other.type;
